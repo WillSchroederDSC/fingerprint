@@ -1,53 +1,57 @@
 # Fingerprint
 
-A customer authentication/authorization microsevice in Go. 
+A customer authentication/authorization microsevice in Go. It allows for user authentication both synchronously (validation via endpoints) and asynchronously (validation via token decryption). 
 
-Allows for sync and async (via decrypting token) user authentication
-
-Uses a PAST token to store information about a session. 
+The bearer token will also be a PAST style token containing information about the session.  
 https://github.com/o1egl/paseto
 
-Uses Devise/Rails/has_secure_password style method for password hashing, uses bcrypt
+Uses Devise/Rails/has_secure_password style method for password hashing, using bcrypt.  
 Based on https://github.com/consyse/go-devise-encryptor
 
-Has the concept of expiring scopes
+Has the concept of expiring scopes, allowing one session to have multiple groupings of scopes that expire at different times.  
+Useful for making customers re-login to perform sensisive actions after a period of time. 
 
-Has the concept of generating a guest user 
+Has the concept of a guest customer.  
+This works by generating a customer with an addendum to their email address that fingerprint splits off for you automatically.  
+This customer is genearted a password that cannot be recovered.  
+Sessions can be requested for guest users to grant them access to things with out having to register.  
 
-## Config
+## Setup
 
-Secret for hashing
-Secret for token decoding 
+Secret for hashing.   
+Secret for token decoding.      
 
 ## Jobs
 
-Cleanup job for session revolks 
+Cleanup job for session revolks.
 
 ## Token Format
-`{
+```json
+{
     version: 1
     customer_id: 1,
     session_id: 1,
+    experation: 1538523728
     scope_groupings: [
         {
             scopes: ["read", "comment"],
-            experation: timestamp(format?)
+            experation: 1538523728
         },
         {
             scopes: ["write"],
-            experation: timestamp 
+            experation: 1538523720
         }
     ]
-}`
+}
+```
 
-Version specifies the format of the token. 
-Customer id is the obfuscated id
-Session id is the obfuscated id
-Scopes is an array of strings 
+Version specifies the format of the token.   
+Scope groupings are collections of scopes with each set of scopes experation date.
+Dates are a unix timestamp.  
 
 ## GRPC/API Endpoints (Not for external use)
 
-User Exists
+User Exists  
 Request: email
 Respone: status 
 
@@ -80,10 +84,6 @@ Create Session Revoke
 Request: session id
 Response: status 
 
-Is Session Revoked (To support async validation)
-Request: session_id
-Response: status
-
 ## Tables
 Customers
     obfuscated id
@@ -94,7 +94,7 @@ Customers
     is_guest
     created_at
     (has many sessions)
-    (has man password resets)
+    (has many password resets)
 
 Sessions
     customer_id
