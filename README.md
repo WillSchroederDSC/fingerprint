@@ -21,27 +21,25 @@ Sessions can be requested for guest users to grant them access to things with ou
 Secret for hashing.   
 Secret for token decoding.      
 
-## Jobs
-
-Cleanup job for session revolks.
-
 ## Token Format
-```json
+```javascript
 {
-    version: 1
-    customer_id: 1,
-    session_id: 1,
-    experation: 1538523728
-    scope_groupings: [
-        {
-            scopes: ["read", "comment"],
-            experation: 1538523728
-        },
-        {
-            scopes: ["write"],
-            experation: 1538523720
-        }
-    ]
+    version: 1,
+    session: {
+        customer_id: 1,
+        session_id: 1,
+        experation: 1538523728,
+        scope_groupings: [
+            {
+                scopes: ["read", "comment"],
+                experation: 1538523728
+            },
+            {
+                scopes: ["write"],
+                experation: 1538523720
+            }
+        ]
+    }
 }
 ```
 
@@ -51,73 +49,95 @@ Dates are a unix timestamp.
 
 ## GRPC/API Endpoints (Not for external use)
 
-User Exists  
-Request: email
-Respone: status 
+### User Exists  
+    Request: email
+    Respone: status 
 
-Create User
-Request: email, password, scopes 
-Response: token 
+### Create User
+    Request: email, password, scopes 
+    Response: token 
 
-Create Guest User
-Appends .guest.random_id, scrambles a password it does not tell you
-Request: email, scopes
-Response: token 
+### Create Guest User
+    Appends .guest.random_id, scrambles a password it does not tell you
+    Request: email, scopes
+    Response: token 
 
-Create Session
-Request: email, password, scopes 
-Response: token 
+###Create Session
+    Request: email, password, scopes 
+    Response: token 
 
-Update Password
-Request: reset token, new password 
-Response: status 
+### Update Password
+    Request: reset token, new password 
+    Response: status 
 
-Validate Session
-Request: token
-Response: status, scopes 
+### Validate Session
+    Request: token
+    Response: status, scopes 
 
-Create Reset Token
-Request: email
-Response: reset token
+### Create Reset Token
+    Request: email
+    Response: reset token
 
-Create Session Revoke 
-Request: session id
-Response: status 
+### Create Session Revoke 
+    Request: session id
+    Response: status 
 
 ## Tables
-Customers
-    obfuscated id
-    email
-    reset token
-    first name
-    last name
-    is_guest
-    created_at
-    (has many sessions)
-    (has many password resets)
+### Customers
+| Field | Type |
+|---| --- |
+| obfuscated_id  |
+| email  |
+| reset_token  |
+| first_name  |
+| last_name   |
+| is_guest   |
+| updated_at |
+| created_at   |
 
-Sessions
-    customer_id
-    obfuscated id
-    experation 
-    created_at
-    (has many Scopes)
-    (belongs to a customer)
+* Has many Sessions
+* Has many PasswordResets 
 
-ScopeGroupings
-    session_id
-    obfuscated id
-    scopes [string array]
-    experation 
-    (belongs to a Session)
+## Sessions
+| Field | Type |
+|---| --- |
+| customer_id |
+| obfuscated_id  |
+| experation  |
+| updated_at |
+| created_at   |
 
-SessionRevokes
-    revoked session_id
-    obfuscated id
-    created_at
-    remove_at (Default, 90 days)
+* Has many ScopeGroupings
+* Belongs to a Customer
 
-PasswordResets
-    customer_id
-    obfuscated id
-    reset_hash
+## ScopeGroupings
+| Field | Type |
+|---| --- |
+| session_id |
+| obfuscated_id  |
+| scopes  | [String] | 
+| updated_at |
+| created_at   |
+
+* Belongs to a Session
+
+## SessionRevokes
+| Field | Type |
+|---| --- |
+| session_id |
+| obfuscated_id  |
+| updated_at |
+| created_at   |
+
+* Belongs to a Session
+
+## PasswordResets
+| Field | Type |
+|---| --- |
+| customer_id |
+| obfuscated_id  |
+| reset_hash |
+| updated_at |
+| created_at   |
+
+* Belongs to a Customer
