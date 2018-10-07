@@ -29,6 +29,7 @@ Secret for token decoding.
         customer_id: 1,
         session_id: 1,
         experation: 1538523728,
+        is_guest: false
         scope_groupings: [
             {
                 scopes: ["read", "comment"],
