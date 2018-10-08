@@ -75,12 +75,12 @@ Dates are a unix timestamp.
     Request: token
     Response: status, scopes 
 
-### Create Reset Token
+### Create Password Reset Token
     Request: email
     Response: reset token
 
 ### Create Session Revoke 
-    Request: session id
+    Request: session_id OR customer_id
     Response: status 
 
 ## Tables
