@@ -24,20 +24,20 @@ Secret for token decoding.
 ## Token Format
 ```javascript
 {
-    version: 1,
-    session: {
-        customer_id: 1,
-        session_id: 1,
-        experation: 1538523728,
-        is_guest: false
-        scope_groupings: [
+    "version": 1,
+    "session": {
+        "customer_id": 1,
+        "session_id": 1,
+        "expiration": 1538523728,
+        "is_guest": false,
+        "scope_groupings": [
             {
-                scopes: ["read", "comment"],
-                experation: 1538523728
+                "scopes": ["read", "comment"],
+                "expiration": 1538523728
             },
             {
-                scopes: ["write"],
-                experation: 1538523720
+                "scopes": ["write"],
+                "expiration": 1538523720
             }
         ]
     }
