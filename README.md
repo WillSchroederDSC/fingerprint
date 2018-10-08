@@ -63,9 +63,9 @@ Dates are a unix timestamp.
     Request: email, scopes
     Response: token 
 
-###Create Session
-    Request: email, password, scopes 
-    Response: token 
+### Create Session
+    Request: email, password, scopes  
+    Response: token  
 
 ### Update Password
     Request: reset token, new password 
