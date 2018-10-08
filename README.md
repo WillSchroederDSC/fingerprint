@@ -1,19 +1,23 @@
 # Fingerprint
 
-A customer authentication/authorization microsevice in Go. It allows for user authentication both synchronously (validation via endpoints) and asynchronously (validation via token decryption). 
+A customer authentication/authorization microsevice in Go. It allows for user authorization both synchronously and asynchronously. 
 
-The bearer token will also be a PAST style token containing information about the session.  
-https://github.com/o1egl/paseto
+To validate synchronously, simply give the token to the validate session endpoint, which returns information about the session.
 
-Uses Devise/Rails/has_secure_password style method for password hashing, using bcrypt.  
-Based on https://github.com/consyse/go-devise-encryptor
+To validate asynchronously, decrypt the JWT token. If you want to validate if its been revolked, call the validate session endpoint. Because you already have the session information from the token decryption, the validation can either be skipped or allowed to fail. 
+
+The bearer token is a JWT token, it can be decrypted to provide information about the session (see below).
+
+Passwords are hashed via bcrypt. If you want compatibility with rails/devise, 
+
+The backing database is postgres. 
 
 Has the concept of expiring scopes, allowing one session to have multiple groupings of scopes that expire at different times.  
 Useful for making customers re-login to perform sensisive actions after a period of time. 
 
 Has the concept of a guest customer.  
 This works by generating a customer with an addendum to their email address that fingerprint splits off for you automatically.  
-This customer is genearted a password that cannot be recovered.  
+This customer is generated a password that cannot be recovered, and is never exposed to any client. 
 Sessions can be requested for guest users to grant them access to things with out having to register.  
 
 ## Setup
