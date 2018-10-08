@@ -4,11 +4,11 @@ A customer authentication/authorization microsevice in Go. It allows for user au
 
 To validate synchronously, simply give the token to the validate session endpoint, which returns information about the session.
 
-To validate asynchronously, decrypt the JWT token. If you want to validate if its been revolked, call the validate session endpoint. Because you already have the session information from the token decryption, the validation can either be skipped or allowed to fail. 
+To validate asynchronously, decrypt the bearer token, which is also a JWT token. If you want to validate if its been revolked, call the validate session endpoint. Because you already have the session information from the token decryption, the validation can either be skipped or allowed to fail. 
 
 The bearer token is a JWT token, it can be decrypted to provide information about the session (see below).
 
-Passwords are hashed via bcrypt. If you want compatibility with rails/devise, 
+Passwords are hashed via bcrypt.
 
 The backing database is postgres. 
 
