@@ -91,7 +91,7 @@ Dates are a unix timestamp.
 ### Customers
 | Field | Type |
 |---| --- |
-| obfuscated_id  |
+| uuid  |
 | email  |
 | reset_token  |
 | first_name  |
@@ -107,7 +107,7 @@ Dates are a unix timestamp.
 | Field | Type |
 |---| --- |
 | customer_id |
-| obfuscated_id  |
+| uuid  |
 | experation  |
 | updated_at |
 | created_at   |
@@ -119,7 +119,7 @@ Dates are a unix timestamp.
 | Field | Type |
 |---| --- |
 | session_id |
-| obfuscated_id  |
+| uuid  |
 | scopes  | [String] | 
 | updated_at |
 | created_at   |
@@ -130,7 +130,7 @@ Dates are a unix timestamp.
 | Field | Type |
 |---| --- |
 | session_id |
-| obfuscated_id  |
+| uuid  |
 | updated_at |
 | created_at   |
 
@@ -140,7 +140,7 @@ Dates are a unix timestamp.
 | Field | Type |
 |---| --- |
 | customer_id |
-| obfuscated_id  |
+| uuid  |
 | reset_hash |
 | updated_at |
 | created_at   |
