@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"google.golang.org/grpc"
-	pb "github.com/willschroeder/fingerprint/pb"
+	"github.com/willschroeder/fingerprint/pb"
 )
 
 const (
