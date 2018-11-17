@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+//package pb;
+
+// import "google/protobuf/timestamp.proto";
+// google.protobuf.Timestamp my_field = 1;
+
+// Services
+
+service FingerprintService {
+    rpc CreateUser (CreateUserRequest) returns (CreateUserResponse) {}
+}
+
+// Base Types
+
+message User {
+    string uuid = 1;
+    string email = 2;
+}
+
+// Requests & Response
+
+message CreateUserRequest {
+    string email = 1;
+    string password = 2;
+    string password_confirmation = 3;
+}
+
+message CreateUserResponse {
+    User user = 1;
+}
