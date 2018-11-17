@@ -5,12 +5,12 @@ import (
 	"log"
 	"time"
 
-	"google.golang.org/grpc"
 	"github.com/willschroeder/fingerprint/pb"
+	"google.golang.org/grpc"
 )
 
 const (
-	address     = "localhost:50051"
+	address = "localhost:50051"
 )
 
 func main() {
@@ -30,5 +30,5 @@ func main() {
 	if err != nil {
 		log.Fatalf("could not greet: %v", err)
 	}
-	log.Printf("Greeting: %s", r.GetUser().Uuid)
+	log.Printf("Greeting %s with uuid %s", r.GetUser().Email, r.GetUser().Uuid)
 }

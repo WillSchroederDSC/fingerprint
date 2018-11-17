@@ -2,13 +2,110 @@ syntax = "proto3";
 
 package pb;
 
-// import "google/protobuf/timestamp.proto";
-// google.protobuf.Timestamp my_field = 1;
-
-// Services
-
 service FingerprintService {
+    rpc GetUser (GetUserRequest) returns (GetUserResponse) {}
     rpc CreateUser (CreateUserRequest) returns (CreateUserResponse) {}
+    rpc CreateGuestUser (CreateGuestUserRequest) returns (CreateGuestUserResponse) {}
+
+    rpc CreatePasswordResetToken (CreatePasswordResetTokenResponse) returns (CreatePasswordResetTokenResponse) {}
+    rpc UpdateUserPassword (ResetUserPasswordRequest) returns (ResetUserPasswordResponse) {}
+
+    rpc CreateSession (CreatePasswordResetTokenRequest) returns (CreatePasswordResetTokenResponse) {}
+    rpc CreateSessionRevoke (CreateSessionRevokeRequest) returns (CreateSessionRevokeResponse) {}
+    rpc GetSession (GetSessionRequest) returns (GetSessionResponse) {}
+}
+
+// Requests & Response
+
+message GetUserRequest {
+    string email = 1;
+}
+
+message GetUserResponse {
+    User user = 1;
+}
+
+message CreateUserRequest {
+    string email = 1;
+    string password = 2;
+    string password_confirmation = 3;
+    repeated ScopeGrouping scope_groupings = 4;
+}
+
+message CreateUserResponse {
+    User user = 1;
+    Session session = 2;
+}
+
+message CreateGuestUserRequest {
+    string email = 1;
+    repeated ScopeGrouping scope_groupings = 2;
+}
+
+message CreateGuestUserResponse {
+    User user = 1;
+    Session session = 2;
+}
+
+message CreateSessionRequest {
+    string email = 1;
+    string password = 2;
+    repeated ScopeGrouping scope_groupings = 3;
+}
+
+message CreateSessionResponse {
+    Session session = 1;
+}
+
+message CreatePasswordResetTokenRequest {
+    string email = 1;
+}
+
+message CreatePasswordResetTokenResponse {
+    string password_reset_token = 1;
+}
+
+message ResetUserPasswordRequest {
+    string email = 1;
+    string password = 2;
+    string password_confirmation = 3;
+    string password_reset_token = 4;
+}
+
+message ResetUserPasswordResponse {
+    enum Status {
+        SUCCESSFUL = 0;
+        PASSWORD_MISMATCH = 1;
+        NO_MATCHING_RESET_TOKEN = 2;
+    }
+    Status status = 1;
+}
+
+message CreateSessionRevokeRequest {
+    oneof revoke {
+        string uuid = 1;
+        string token = 2;
+    }
+}
+
+message CreateSessionRevokeResponse {
+    enum Status {
+        REVOKED_UUID = 0;
+        REVOKED_TOKEN = 1;
+        NO_SESSION_FOUND = 3;
+    }
+    Status status = 1;
+}
+
+message GetSessionRequest {
+    oneof revoke {
+        string uuid = 1;
+        string token = 2;
+    }
+}
+
+message GetSessionResponse {
+    Session session = 1;
 }
 
 // Base Types
@@ -18,14 +115,13 @@ message User {
     string email = 2;
 }
 
-// Requests & Response
-
-message CreateUserRequest {
-    string email = 1;
-    string password = 2;
-    string password_confirmation = 3;
+message ScopeGrouping {
+    repeated string scopes = 1;
+    double lifespan = 2;
 }
 
-message CreateUserResponse {
-    User user = 1;
+message Session {
+    string uuid = 1;
+    string token = 2;
+    string json = 3;
 }
