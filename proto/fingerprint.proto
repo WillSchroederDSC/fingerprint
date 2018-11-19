@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package pb;
+package proto;
 
 service FingerprintService {
     rpc GetUser (GetUserRequest) returns (GetUserResponse) {}

@@ -5,7 +5,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/willschroeder/fingerprint/pb"
+	"github.com/willschroeder/fingerprint/proto"
 	"google.golang.org/grpc"
 )
 
@@ -20,15 +20,15 @@ func main() {
 		log.Fatalf("did not connect: %v", err)
 	}
 	defer conn.Close()
-	c := pb.NewFingerprintServiceClient(conn)
+	c := proto.NewFingerprintServiceClient(conn)
 
 	// Contact the server and print out its response.
 	email := "test@test.com"
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	r, err := c.CreateUser(ctx, &pb.CreateUserRequest{Email: email})
+	r, err := c.CreateUser(ctx, &proto.CreateUserRequest{Email: email})
 	if err != nil {
 		log.Fatalf("could not greet: %v", err)
 	}
-	log.Printf("Greeting %s with uuid %s", r.GetUser().Email, r.GetUser().Uuid)
+	log.Printf("Greeting %s with uuid %s, with token %s", r.GetUser().Email, r.GetUser().Uuid, r.GetSession().Token)
 }
