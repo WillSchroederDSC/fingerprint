@@ -1,11 +1,11 @@
-package main
+package client
 
 import (
 	"context"
 	"log"
 	"time"
 
-	"github.com/willschroeder/fingerprint/proto"
+	"github.com/willschroeder/fingerprint/pkg/proto"
 	"google.golang.org/grpc"
 )
 
@@ -13,7 +13,7 @@ const (
 	address = "localhost:50051"
 )
 
-func main() {
+func NewClient() {
 	// Set up a connection to the server.
 	conn, err := grpc.Dial(address, grpc.WithInsecure())
 	if err != nil {

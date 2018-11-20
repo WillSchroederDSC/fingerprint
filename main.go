@@ -1,65 +1,21 @@
+// Copyright © 2018 Will Schroeder
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package main
 
-import (
-	"context"
-	"log"
-	"net"
-
-	"github.com/willschroeder/fingerprint/proto"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/reflection"
-)
-
-const (
-	port = ":50051"
-)
-
-type Server struct{}
+import "github.com/willschroeder/fingerprint/cmd"
 
 func main() {
-	lis, err := net.Listen("tcp", port)
-	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
-	}
-	s := grpc.NewServer()
-
-	proto.RegisterFingerprintServiceServer(s, &Server{})
-	reflection.Register(s)
-	if err := s.Serve(lis); err != nil {
-		log.Fatalf("failed to serve: %v", err)
-	}
-}
-
-func (s *Server) CreateUser(_ context.Context, request *proto.CreateUserRequest) (*proto.CreateUserResponse, error) {
-	user := &proto.User{Uuid: "1111", Email: request.Email}
-	session := &proto.Session{Uuid:"1111",Token: "token", Json:"{}"}
-	return &proto.CreateUserResponse{User: user, Session:session}, nil
-}
-
-func (s *Server) GetUser(context.Context, *proto.GetUserRequest) (*proto.GetUserResponse, error) {
-	panic("implement me")
-}
-
-func (s *Server) CreateGuestUser(context.Context, *proto.CreateGuestUserRequest) (*proto.CreateGuestUserResponse, error) {
-	panic("implement me")
-}
-
-func (s *Server) CreatePasswordResetToken(context.Context, *proto.CreatePasswordResetTokenResponse) (*proto.CreatePasswordResetTokenResponse, error) {
-	panic("implement me")
-}
-
-func (s *Server) UpdateUserPassword(context.Context, *proto.ResetUserPasswordRequest) (*proto.ResetUserPasswordResponse, error) {
-	panic("implement me")
-}
-
-func (s *Server) CreateSession(context.Context, *proto.CreatePasswordResetTokenRequest) (*proto.CreatePasswordResetTokenResponse, error) {
-	panic("implement me")
-}
-
-func (s *Server) CreateSessionRevoke(context.Context, *proto.CreateSessionRevokeRequest) (*proto.CreateSessionRevokeResponse, error) {
-	panic("implement me")
-}
-
-func (s *Server) GetSession(context.Context, *proto.GetSessionRequest) (*proto.GetSessionResponse, error) {
-	panic("implement me")
+	cmd.Execute()
 }
