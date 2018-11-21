@@ -12,7 +12,8 @@ func (s *Server) CreateUser(_ context.Context, request *proto.CreateUserRequest)
 }
 
 func (s *Server) GetUser(context.Context, *proto.GetUserRequest) (*proto.GetUserResponse, error) {
-	panic("implement me")
+	user := &proto.User{Uuid: "1111", Email:"fake@email.com"}
+	return &proto.GetUserResponse{User:user}, nil
 }
 
 func (s *Server) CreateGuestUser(context.Context, *proto.CreateGuestUserRequest) (*proto.CreateGuestUserResponse, error) {

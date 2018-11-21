@@ -1,13 +1,6 @@
 package server
 
-import (
-	"log"
-	"net"
-
-	"github.com/willschroeder/fingerprint/pkg/proto"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/reflection"
-)
+import "github.com/willschroeder/fingerprint/pkg/db"
 
 const (
 	port = ":50051"
@@ -15,15 +8,19 @@ const (
 
 
 func NewServer() {
-	lis, err := net.Listen("tcp", port)
-	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
-	}
-	s := grpc.NewServer()
+	//lis, err := net.Listen("tcp", port)
+	//if err != nil {
+	//	log.Fatalf("failed to listen: %v", err)
+	//}
+	//s := grpc.NewServer()
+	//
+	//proto.RegisterFingerprintServiceServer(s, &Server{})
+	//reflection.Register(s)
+	//if err := s.Serve(lis); err != nil {
+	//	log.Fatalf("failed to serve: %v", err)
+	//}
 
-	proto.RegisterFingerprintServiceServer(s, &Server{})
-	reflection.Register(s)
-	if err := s.Serve(lis); err != nil {
-		log.Fatalf("failed to serve: %v", err)
-	}
+	db := db.ConnectToDatabase()
+	defer db.Connection.Close()
+	db.CreateUser()
 }
