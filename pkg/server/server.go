@@ -21,6 +21,7 @@ func NewServer() {
 	//}
 
 	db := db.ConnectToDatabase()
-	defer db.Connection.Close()
-	db.CreateUser()
+	defer db.Conn.Close()
+
+	GetUser(db)
 }

@@ -14,32 +14,25 @@ const (
 	dbname   = "fingerprint_development"
 )
 
-type DB struct {
-	Connection *sql.DB
+type DAO struct {
+	Conn *sql.DB
 }
 
-func ConnectToDatabase() (*DB) {
+func ConnectToDatabase() *DAO {
 	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+
 		"password=%s dbname=%s sslmode=disable",
 		host, port, user, password, dbname)
 
-	db, err := sql.Open("postgres", psqlInfo)
+	conn, err := sql.Open("postgres", psqlInfo)
 	if err != nil {
 		panic(err)
 	}
 
-	// Ensures Connection
-	err = db.Ping()
+	// Ensures Conn
+	err = conn.Ping()
 	if err != nil {
 		panic(err)
 	}
-	return &DB{Connection: db}
+	return &DAO{Conn: conn}
 }
 
-func (db *DB) CreateUser() {
-	sqlStatement := "INSERT INTO users (uuid, email) VALUES ('1112', 'test@test.io')"
-	_, err := db.Connection.Exec(sqlStatement)
-	if err != nil {
-		panic(err)
-	}
-}
