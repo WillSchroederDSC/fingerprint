@@ -15,14 +15,14 @@ func (r *Repo) CreateUser() {
 }
 
 func (r *Repo) GetUser() {
-	sqlStatement := `SELECT email FROM users WHERE uuid=$1;`
-	var email string
+	sqlStatement := "SELECT email FROM users WHERE uuid=$1"
+	var user User
 
 	row := r.dao.Conn.QueryRow(sqlStatement, "f47ac10b-58cc-0372-8567-0e02b2c3d479")
-	err := row.Scan(&email)
+	err := row.Scan(&user.email)
 	if err != nil {
 		panic(err)
 	}
 
-	println(email)
+	println(user.email)
 }
