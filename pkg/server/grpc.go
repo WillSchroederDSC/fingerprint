@@ -1,14 +1,20 @@
 package server
 
-import "github.com/willschroeder/fingerprint/pkg/proto"
+import (
+	"github.com/willschroeder/fingerprint/pkg/db"
+	"github.com/willschroeder/fingerprint/pkg/proto"
+)
 import "context"
 
-type Server struct{}
+type Server struct{
+	repo *Repo
+	dao *db.DAO
+}
 
 func (s *Server) CreateUser(_ context.Context, request *proto.CreateUserRequest) (*proto.CreateUserResponse, error) {
-	user := &proto.User{Uuid: "1111", Email:request.Email}
+	user := s.repo.CreateUser(request.Email)
 	session := &proto.Session{Uuid:"1111", Token:"token", Json:"{}"}
-	return &proto.CreateUserResponse{User:user, Session:session}, nil
+	return &proto.CreateUserResponse{User:user.ConvertToProtobuff(), Session:session}, nil
 }
 
 func (s *Server) GetUser(context.Context, *proto.GetUserRequest) (*proto.GetUserResponse, error) {
