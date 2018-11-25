@@ -20,8 +20,9 @@ func NewServer() {
 	//	log.Fatalf("failed to serve: %v", err)
 	//}
 
-	db := db.ConnectToDatabase()
-	defer db.Conn.Close()
+	dao := db.ConnectToDatabase()
+	defer dao.Conn.Close()
 
-	GetUser(db)
+	repo := Repo{dao: dao}
+	repo.GetUser()
 }
