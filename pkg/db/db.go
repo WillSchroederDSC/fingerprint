@@ -36,3 +36,11 @@ func ConnectToDatabase() *DAO {
 	return &DAO{Conn: conn}
 }
 
+func MigrateUp() {
+
+}
+
+func MigrateDown() {
+
+}
+
