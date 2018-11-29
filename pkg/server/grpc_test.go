@@ -23,7 +23,7 @@ func TestCreateUser(t *testing.T) {
 				Expiration: oneHour,
 			},
 			{
-				Scopes:     []string{"read"},
+				Scopes:     []string{"write"},
 				Expiration: twoHour,
 			},
 		},
