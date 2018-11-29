@@ -1,6 +1,7 @@
 package server
 
 import (
+	"github.com/golang/protobuf/ptypes"
 	"github.com/willschroeder/fingerprint/pkg/proto"
 	"time"
 )
@@ -34,5 +35,21 @@ func (s *Session) ConvertToProtobuff(token string, json string) *proto.Session {
 }
 
 type ScopeGrouping struct {
+	id int
+	uuid string
+	sessionId int
+	scopes []string
+	expiration time.Time
+}
 
+func (sg *ScopeGrouping) ConvertToProtobuff() (*proto.ScopeGrouping, error) {
+	timestamp, err := ptypes.TimestampProto(sg.expiration)
+	if err != nil {
+		return nil, err
+	}
+
+	return &proto.ScopeGrouping{
+		Scopes: sg.scopes,
+		Expiration: timestamp,
+	}, nil
 }

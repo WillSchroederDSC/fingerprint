@@ -21,6 +21,7 @@ CREATE TABLE scope_groupings (
                     uuid uuid NOT NULL UNIQUE,
                     session_id INTEGER REFERENCES sessions(id),
                     scopes TEXT[],
+                    expiration TIMESTAMPTZ,
                     created_at TIMESTAMPTZ
 );
 CREATE index scope_groupings_uuid ON scope_groupings (uuid);

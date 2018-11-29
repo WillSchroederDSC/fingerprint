@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package proto;
 
+import "google/protobuf/timestamp.proto";
+
 service FingerprintService {
     rpc GetUser (GetUserRequest) returns (GetUserResponse) {}
     rpc CreateUser (CreateUserRequest) returns (CreateUserResponse) {}
@@ -117,7 +119,7 @@ message User {
 
 message ScopeGrouping {
     repeated string scopes = 1;
-    double lifespan = 2;
+    google.protobuf.Timestamp expiration = 2;
 }
 
 message Session {

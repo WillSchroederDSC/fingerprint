@@ -7,7 +7,6 @@ import (
 	"google.golang.org/grpc/reflection"
 	"log"
 	"net"
-	"os"
 )
 
 const (
@@ -18,12 +17,10 @@ const (
 func NewServer() {
 	dao := db.ConnectToDatabase()
 	defer dao.Conn.Close()
-	logger := log.New(os.Stdout, "", log.LstdFlags)
 	repo := &Repo{dao:dao}
-	server := &GRPCSerer{
+	server := &GRPCServer{
 		dao: dao,
 		repo:repo,
-		logger:logger,
 	}
 
 	// GRPC Setup, taken from google's Hello World example
