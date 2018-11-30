@@ -29,5 +29,5 @@ func TestCreateUser(t *testing.T) {
 		},
 	}
 	res, _ := server.CreateUser(context.Background(), req)
-	print(res)
+	print(res.Session.Token)
 }

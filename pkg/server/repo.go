@@ -44,7 +44,7 @@ func (r *Repo) GetUserWithUUID(userUUID string) (*User, error) {
 	return &user, nil
 }
 
-func (r *Repo) CreateSession(userId int, token string) (*Session, error) {
+func (r *Repo) CreateSession(userId int, token string, expiration time.Time) (*Session, error) {
 	sessionUUID := uuid.New().String()
 
 	sqlStatement := "INSERT INTO sessions (uuid, user_id, token, expiration, created_at) VALUES ($1, $2, $3, $4, $5)"

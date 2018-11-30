@@ -1,2 +1,6 @@
 Build decoder token command
-use transactions
+use transactions in repo
+validate in token factory has scopes
+calculate longest experation
+use correct session id
+

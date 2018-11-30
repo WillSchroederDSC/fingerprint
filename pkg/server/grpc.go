@@ -55,7 +55,7 @@ func (s *GRPCServer) CreateUser(_ context.Context, request *proto.CreateUserRequ
 		return nil, err
 	}
 
-	session, err := s.repo.CreateSession(user.id, sessionToken)
+	session, err := s.repo.CreateSession(user.id, sessionToken, tf.FurthestExpiration())
 	if err != nil {
 		fmt.Println(err)
 		return nil, err

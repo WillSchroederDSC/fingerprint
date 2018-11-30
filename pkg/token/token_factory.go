@@ -14,7 +14,7 @@ type Encoder struct {
 	ScopeGroupings []*tokenFactoryScopeGrouping `json:"scope_groupings"`
 }
 
-// Required to let object be encoded by JWT lib
+// TODO: check for scope groupings
 func (_ Encoder) Valid() error {
 	return nil
 }
@@ -28,6 +28,7 @@ func (tf *Encoder) AddScopeGrouping(scopes []string, expiration time.Time) {
 	tf.ScopeGroupings = append(tf.ScopeGroupings, &tokenFactoryScopeGrouping{Scopes: scopes, Expiration:expiration})
 }
 
+// Decouple from encoder, encoder/decoder should be pure
 func (tf *Encoder) GenerateToken() (string, error) {
 	v2 := paseto.NewV2()
 	token, err := v2.Encrypt(secret(), tf, "")
@@ -44,6 +45,19 @@ func (tf *Encoder) GenerateJSON() (string, error) {
 		panic(err)
 	}
 	return string(bs), nil
+}
+
+func (tf *Encoder) FurthestExpiration() time.Time {
+	// TODO: Run validator first
+
+	furthest := tf.ScopeGroupings[0].Expiration
+	for _, sg := range tf.ScopeGroupings {
+		if sg.Expiration.After(furthest) {
+			furthest = sg.Expiration
+		}
+	}
+
+	return furthest
 }
 
 func BuildTokenFactory(userUUID string, sessionUUID string, isGuest bool) *Encoder {
