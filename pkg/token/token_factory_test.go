@@ -13,4 +13,5 @@ func TestCreateToken(t *testing.T) {
 	println(json)
 	token, _ := factory.GenerateToken()
 	println(token)
+	DecodeToken(token)
 }

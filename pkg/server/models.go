@@ -22,14 +22,15 @@ func (u *User) ConvertToProtobuff() *proto.User {
 type Session struct {
 	id int
 	uuid string
+	token string
 	customerId int
 	expiration time.Time
 }
 
-func (s *Session) ConvertToProtobuff(token string, json string) *proto.Session {
+func (s *Session) ConvertToProtobuff(json string) *proto.Session {
 	return &proto.Session{
 		Uuid: s.uuid,
-		Token: token,
+		Token: s.token,
 		Json: json,
 	}
 }

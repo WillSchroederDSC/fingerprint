@@ -4,8 +4,10 @@ import (
 	"errors"
 	"fmt"
 	"github.com/golang/protobuf/ptypes"
+	"github.com/google/uuid"
 	"github.com/willschroeder/fingerprint/pkg/db"
 	"github.com/willschroeder/fingerprint/pkg/proto"
+	"github.com/willschroeder/fingerprint/pkg/token"
 	"golang.org/x/crypto/bcrypt"
 )
 import "context"
@@ -32,7 +34,28 @@ func (s *GRPCServer) CreateUser(_ context.Context, request *proto.CreateUserRequ
 		return nil, err
 	}
 
-	session, err := s.repo.CreateSession(user.id)
+	sessionUUID := uuid.New().String() // Currently will mismatch session ID
+	tf := token.BuildTokenFactory(user.uuid, sessionUUID, false)
+	for _, sg := range request.ScopeGroupings {
+		exp, err := ptypes.Timestamp(sg.Expiration)
+		if err != nil {
+			fmt.Println(err)
+			return nil, err
+		}
+		tf.AddScopeGrouping(sg.Scopes, exp)
+	}
+	sessionToken, err := tf.GenerateToken()
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+	json, err := tf.GenerateJSON()
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+
+	session, err := s.repo.CreateSession(user.id, sessionToken)
 	if err != nil {
 		fmt.Println(err)
 		return nil, err
@@ -55,7 +78,7 @@ func (s *GRPCServer) CreateUser(_ context.Context, request *proto.CreateUserRequ
 		scopeGroupings[i] = scopeGrouping
 	}
 
-	return &proto.CreateUserResponse{User:user.ConvertToProtobuff(), Session:session.ConvertToProtobuff("111", "{}")}, nil
+	return &proto.CreateUserResponse{User:user.ConvertToProtobuff(), Session:session.ConvertToProtobuff(json)}, nil
 }
 
 func (s *GRPCServer) GetUser(context.Context, *proto.GetUserRequest) (*proto.GetUserResponse, error) {

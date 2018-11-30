@@ -2,7 +2,7 @@ package token
 
 import (
 	"encoding/json"
-	"github.com/dgrijalva/jwt-go"
+	"github.com/o1egl/paseto"
 	"time"
 )
 
@@ -29,14 +29,13 @@ func (tf *Encoder) AddScopeGrouping(scopes []string, expiration time.Time) {
 }
 
 func (tf *Encoder) GenerateToken() (string, error) {
-	token := jwt.New(jwt.SigningMethodHS256)
-	token.Claims = tf
-	tokenString, err := token.SignedString(secret())
+	v2 := paseto.NewV2()
+	token, err := v2.Encrypt(secret(), tf, "")
 	if err != nil {
 		panic(err)
 	}
 
-	return tokenString, nil
+	return token, nil
 }
 
 func (tf *Encoder) GenerateJSON() (string, error) {
@@ -47,10 +46,22 @@ func (tf *Encoder) GenerateJSON() (string, error) {
 	return string(bs), nil
 }
 
-func BuildTokenFactory(customerUUID string, sessionUUID string, isGuest bool) *Encoder {
-	return &Encoder{Version: 1, CustomerUUID: customerUUID, SessionUUID:sessionUUID, IsGuest:isGuest}
+func BuildTokenFactory(userUUID string, sessionUUID string, isGuest bool) *Encoder {
+	return &Encoder{Version: 1, CustomerUUID: userUUID, SessionUUID:sessionUUID, IsGuest:isGuest}
 }
 
 func secret() []byte {
-	return []byte("foobar")
+	// MUST be 32 chars
+	return []byte("YELLOW SUBMARINE, BLACK WIZARDRY")
+}
+
+func DecodeToken(sessionToken string) string {
+	v2 := paseto.NewV2()
+	var token string
+	var footer string
+	err := v2.Decrypt(sessionToken, secret(), &token, &footer)
+	if err != nil {
+		panic(err)
+	}
+	return token
 }

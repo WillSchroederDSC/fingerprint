@@ -44,11 +44,11 @@ func (r *Repo) GetUserWithUUID(userUUID string) (*User, error) {
 	return &user, nil
 }
 
-func (r *Repo) CreateSession(userId int) (*Session, error) {
+func (r *Repo) CreateSession(userId int, token string) (*Session, error) {
 	sessionUUID := uuid.New().String()
 
-	sqlStatement := "INSERT INTO sessions (uuid, user_id, expiration, created_at) VALUES ($1, $2, $3, $4)"
-	_, err := r.dao.Conn.Exec(sqlStatement, sessionUUID, userId, time.Now().UTC(), time.Now().UTC())
+	sqlStatement := "INSERT INTO sessions (uuid, user_id, token, expiration, created_at) VALUES ($1, $2, $3, $4, $5)"
+	_, err := r.dao.Conn.Exec(sqlStatement, sessionUUID, userId, token, time.Now().UTC(), time.Now().UTC())
 	if err != nil {
 		panic(err)
 		return nil, err
@@ -64,11 +64,11 @@ func (r *Repo) CreateSession(userId int) (*Session, error) {
 }
 
 func (r *Repo) GetSessionWithUUID(sessionUUID string) (*Session, error) {
-	sqlStatement := "SELECT id,uuid,expiration FROM sessions WHERE uuid=$1"
+	sqlStatement := "SELECT id,uuid,token,expiration FROM sessions WHERE uuid=$1"
 
 	row := r.dao.Conn.QueryRow(sqlStatement, sessionUUID)
 	var session Session
-	err := row.Scan(&session.id, &session.uuid, &session.expiration)
+	err := row.Scan(&session.id, &session.uuid, &session.token, &session.expiration)
 	if err != nil {
 		panic(err)
 		return nil, err
