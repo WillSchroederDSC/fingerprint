@@ -23,11 +23,23 @@ func TestCreateUser(t *testing.T) {
 				Expiration: oneHour,
 			},
 			{
-				Scopes:     []string{"read"},
+				Scopes:     []string{"write"},
 				Expiration: twoHour,
 			},
 		},
 	}
-	res, _ := server.CreateUser(context.Background(), req)
-	print(res)
+	res, _ := testServer.CreateUser(context.Background(), req)
+	print(res.Session.Token)
+}
+
+func TestGetUserWithUUID(t *testing.T) {
+	user := createTestUser()
+	req := &proto.GetUserRequest{
+		Identifier: &proto.GetUserRequest_Uuid{
+			Uuid: user.uuid,
+		},
+	}
+
+	res, _ := testServer.GetUser(context.Background(), req)
+	print(res.User.Email)
 }

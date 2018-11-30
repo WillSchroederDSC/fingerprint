@@ -8,16 +8,16 @@ import (
 	"testing"
 )
 
-var repo *Repo
-var dao *db.DAO
-var server *GRPCServer
+var testRepo *Repo
+var testDAO *db.DAO
+var testServer *GRPCServer
 
 func TestMain(m *testing.M) {
 	gofakeit.Seed(0)
-	dao = db.ConnectToDatabase()
-	defer dao.Conn.Close()
-	repo = &Repo{dao: dao}
-	server = &GRPCServer{repo:repo, dao:dao}
+	testDAO = db.ConnectToDatabase()
+	defer testDAO.Conn.Close()
+	testRepo = &Repo{dao: testDAO}
+	testServer = &GRPCServer{repo: testRepo, dao: testDAO}
 	code := m.Run()
 	os.Exit(code)
 }
@@ -29,16 +29,20 @@ func createEncryptedPassword() string {
 }
 
 func createTestUser() *User {
-	user, _ := repo.CreateUser(gofakeit.Email(), createEncryptedPassword())
+	tx, _ := testDAO.Conn.Begin()
+	user, _ := testRepo.CreateUser(tx, gofakeit.Email(), createEncryptedPassword())
+	tx.Commit()
 	return user
 }
 
 func TestRepoCreateUser(t *testing.T) {
 	email := gofakeit.Email()
-	user, err := repo.CreateUser(email, createEncryptedPassword())
+	tx, _ := testDAO.Conn.Begin()
+	user, err := testRepo.CreateUser(tx,email, createEncryptedPassword())
 	if err != nil {
 		t.Fatal(err)
 	}
+	tx.Commit()
 	if user.email != email {
 		t.Errorf("User not created with test email")
 	}
@@ -46,10 +50,12 @@ func TestRepoCreateUser(t *testing.T) {
 
 func TestRepoGetUser(t *testing.T) {
 	testUser := createTestUser()
-	gotUser, err := repo.GetUserWithUUID(testUser.uuid)
+	tx, _ := testDAO.Conn.Begin()
+	gotUser, err := testRepo.GetUserWithUUID(tx, testUser.uuid)
 	if err != nil {
 		t.Fatal(err)
 	}
+	tx.Commit()
 	if gotUser == nil || gotUser.email == "" {
 		t.Errorf("Not able to get test user")
 	}

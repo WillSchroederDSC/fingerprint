@@ -20,7 +20,10 @@ service FingerprintService {
 // Requests & Response
 
 message GetUserRequest {
-    string email = 1;
+    oneof identifier {
+        string uuid = 1;
+        string email = 2;
+    }
 }
 
 message GetUserResponse {

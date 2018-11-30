@@ -30,5 +30,5 @@ func NewClient() {
 	if err != nil {
 		log.Fatalf("could not greet: %v", err)
 	}
-	log.Printf("Greeting %s with uuid %s, with token %s", r.GetUser().Email, r.GetUser().Uuid, r.GetSession().Token)
+	log.Printf("Greeting %s with uuid %s, with session_representations %s", r.GetUser().Email, r.GetUser().Uuid, r.GetSession().Token)
 }
