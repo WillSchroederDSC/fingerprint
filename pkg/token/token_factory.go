@@ -4,18 +4,21 @@ import (
 	"encoding/json"
 	"github.com/o1egl/paseto"
 	"time"
+	"errors"
 )
 
-type Encoder struct {
+type Factory struct {
 	Version        int    `json:"version"`
 	CustomerUUID   string `json:"customer_id"`
 	SessionUUID    string `json:"session_id"`
-	IsGuest        bool   `json:"is_guest"`
 	ScopeGroupings []*tokenFactoryScopeGrouping `json:"scope_groupings"`
 }
 
-// TODO: check for scope groupings
-func (_ Encoder) Valid() error {
+func (tf *Factory) Valid() error {
+	if len(tf.ScopeGroupings) < 1 {
+		return errors.New("must have at least one scope grouping")
+	}
+
 	return nil
 }
 
@@ -24,12 +27,42 @@ type tokenFactoryScopeGrouping struct {
 	Expiration time.Time `json:"expiration"`
 }
 
-func (tf *Encoder) AddScopeGrouping(scopes []string, expiration time.Time) {
+type Session struct {
+	Token string
+	Json string
+	FurthestExpiration time.Time
+}
+
+func NewTokenFactory(userUUID string, sessionUUID string) *Factory {
+	return &Factory{Version: 1, CustomerUUID: userUUID, SessionUUID:sessionUUID}
+}
+
+func (tf *Factory) AddScopeGrouping(scopes []string, expiration time.Time) {
 	tf.ScopeGroupings = append(tf.ScopeGroupings, &tokenFactoryScopeGrouping{Scopes: scopes, Expiration:expiration})
 }
 
-// Decouple from encoder, encoder/decoder should be pure
-func (tf *Encoder) GenerateToken() (string, error) {
+func (tf *Factory) GenerateSession() (*Session,  error) {
+	err := tf.Valid()
+	if err != nil {
+		return nil, err
+	}
+
+	token, err := tf.generateToken()
+	if err != nil {
+		return nil, err
+	}
+
+
+	jsonStr, err := tf.generateJSON()
+	if err != nil {
+		return nil, err
+	}
+
+	furthestExpiration := tf.findFurthestExpiration()
+	return &Session{Token:token, Json:jsonStr, FurthestExpiration: furthestExpiration}, nil
+}
+
+func (tf *Factory) generateToken() (string, error) {
 	v2 := paseto.NewV2()
 	token, err := v2.Encrypt(secret(), tf, "")
 	if err != nil {
@@ -39,7 +72,7 @@ func (tf *Encoder) GenerateToken() (string, error) {
 	return token, nil
 }
 
-func (tf *Encoder) GenerateJSON() (string, error) {
+func (tf *Factory) generateJSON() (string, error) {
 	bs, err := json.Marshal(tf)
 	if err != nil {
 		panic(err)
@@ -47,21 +80,14 @@ func (tf *Encoder) GenerateJSON() (string, error) {
 	return string(bs), nil
 }
 
-func (tf *Encoder) FurthestExpiration() time.Time {
-	// TODO: Run validator first
-
+func (tf *Factory) findFurthestExpiration() time.Time {
 	furthest := tf.ScopeGroupings[0].Expiration
 	for _, sg := range tf.ScopeGroupings {
 		if sg.Expiration.After(furthest) {
 			furthest = sg.Expiration
 		}
 	}
-
 	return furthest
-}
-
-func BuildTokenFactory(userUUID string, sessionUUID string, isGuest bool) *Encoder {
-	return &Encoder{Version: 1, CustomerUUID: userUUID, SessionUUID:sessionUUID, IsGuest:isGuest}
 }
 
 func secret() []byte {
@@ -69,7 +95,7 @@ func secret() []byte {
 	return []byte("YELLOW SUBMARINE, BLACK WIZARDRY")
 }
 
-func DecodeToken(sessionToken string) string {
+func DecodeTokenToJson(sessionToken string) string {
 	v2 := paseto.NewV2()
 	var token string
 	var footer string

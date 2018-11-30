@@ -44,8 +44,8 @@ func (r *Repo) GetUserWithUUID(userUUID string) (*User, error) {
 	return &user, nil
 }
 
-func (r *Repo) CreateSession(userId int, token string, expiration time.Time) (*Session, error) {
-	sessionUUID := uuid.New().String()
+func (r *Repo) CreateSession(newSessionUUID uuid.UUID, userId int, token string, expiration time.Time) (*Session, error) {
+	sessionUUID := newSessionUUID.String()
 
 	sqlStatement := "INSERT INTO sessions (uuid, user_id, token, expiration, created_at) VALUES ($1, $2, $3, $4, $5)"
 	_, err := r.dao.Conn.Exec(sqlStatement, sessionUUID, userId, token, time.Now().UTC(), time.Now().UTC())
