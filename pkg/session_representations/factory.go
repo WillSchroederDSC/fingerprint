@@ -1,4 +1,4 @@
-package token
+package session_representations
 
 import (
 	"encoding/json"
@@ -27,7 +27,7 @@ type tokenFactoryScopeGrouping struct {
 	Expiration time.Time `json:"expiration"`
 }
 
-type Session struct {
+type Representations struct {
 	Token string
 	Json string
 	FurthestExpiration time.Time
@@ -41,7 +41,7 @@ func (tf *Factory) AddScopeGrouping(scopes []string, expiration time.Time) {
 	tf.ScopeGroupings = append(tf.ScopeGroupings, &tokenFactoryScopeGrouping{Scopes: scopes, Expiration:expiration})
 }
 
-func (tf *Factory) GenerateSession() (*Session,  error) {
+func (tf *Factory) GenerateSession() (*Representations,  error) {
 	err := tf.Valid()
 	if err != nil {
 		return nil, err
@@ -59,7 +59,7 @@ func (tf *Factory) GenerateSession() (*Session,  error) {
 	}
 
 	furthestExpiration := tf.findFurthestExpiration()
-	return &Session{Token:token, Json:jsonStr, FurthestExpiration: furthestExpiration}, nil
+	return &Representations{Token: token, Json:jsonStr, FurthestExpiration: furthestExpiration}, nil
 }
 
 func (tf *Factory) generateToken() (string, error) {

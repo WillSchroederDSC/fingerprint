@@ -1,4 +1,4 @@
-package token
+package session_representations
 
 import (
 	"testing"

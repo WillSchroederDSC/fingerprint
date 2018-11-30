@@ -1,13 +1,14 @@
 package server
 
 import (
+	"database/sql"
 	"errors"
 	"fmt"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/google/uuid"
 	"github.com/willschroeder/fingerprint/pkg/db"
 	"github.com/willschroeder/fingerprint/pkg/proto"
-	"github.com/willschroeder/fingerprint/pkg/token"
+	"github.com/willschroeder/fingerprint/pkg/session_representations"
 	"golang.org/x/crypto/bcrypt"
 	"time"
 )
@@ -19,22 +20,36 @@ type GRPCServer struct{
 }
 
 func (s *GRPCServer) CreateUser(_ context.Context, request *proto.CreateUserRequest) (*proto.CreateUserResponse, error) {
-	user, err := s.buildUser(request.Password, request.PasswordConfirmation, request.Email)
+	tx, err :=  s.dao.Conn.Begin()
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+
+	user, err := s.buildUser(tx, request.Password, request.PasswordConfirmation, request.Email)
 
 	sessionUUID := uuid.New()
 	sessionToken, json, furthestExpiration, err := s.buildToken(user, sessionUUID, request.ScopeGroupings)
 	if err != nil {
+		tx.Rollback()
 		fmt.Println(err)
 		return nil, err
 	}
 
-	session, err := s.buildSession(sessionUUID, user.id, sessionToken, furthestExpiration)
+
+	session, err := s.buildSession(tx, sessionUUID, user.id, sessionToken, furthestExpiration)
 	if err != nil {
 		fmt.Println(err)
 		return nil, err
 	}
 
-	_, err = s.buildScopeGroupings(request.ScopeGroupings, session.id)
+	_, err = s.buildScopeGroupings(tx, request.ScopeGroupings, session.id)
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+
+	err = tx.Commit()
 	if err != nil {
 		fmt.Println(err)
 		return nil, err
@@ -43,9 +58,26 @@ func (s *GRPCServer) CreateUser(_ context.Context, request *proto.CreateUserRequ
 	return &proto.CreateUserResponse{User:user.ConvertToProtobuff(), Session:session.ConvertToProtobuff(json)}, nil
 }
 
-func (s *GRPCServer) GetUser(context.Context, *proto.GetUserRequest) (*proto.GetUserResponse, error) {
-	user := &proto.User{Uuid: "1111", Email:"fake@email.com"}
-	return &proto.GetUserResponse{User:user}, nil
+func (s *GRPCServer) GetUser(_ context.Context, request *proto.GetUserRequest) (*proto.GetUserResponse, error) {
+	tx, err :=  s.dao.Conn.Begin()
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+
+	switch ident := request.Identifier.(type) {
+	case *proto.GetUserRequest_Email:
+		panic("implement me")
+	case *proto.GetUserRequest_Uuid:
+		user, err := s.repo.GetUserWithUUID(tx, ident.Uuid)
+		if err != nil {
+			fmt.Println(err)
+			return nil, err
+		}
+		return &proto.GetUserResponse{User:user.ConvertToProtobuff()}, nil
+	}
+
+	return nil, errors.New("unknown user identifier")
 }
 
 func (s *GRPCServer) CreateGuestUser(context.Context, *proto.CreateGuestUserRequest) (*proto.CreateGuestUserResponse, error) {
@@ -74,7 +106,7 @@ func (s *GRPCServer) GetSession(context.Context, *proto.GetSessionRequest) (*pro
 
 // Builder Functions
 
-func (s *GRPCServer) buildUser(password string, passwordConfirmation string, email string) (*User, error) {
+func (s *GRPCServer) buildUser(tx *sql.Tx, password string, passwordConfirmation string, email string) (*User, error) {
 	if password != passwordConfirmation {
 		return nil, errors.New("password and confirmation don't match")
 	}
@@ -85,7 +117,7 @@ func (s *GRPCServer) buildUser(password string, passwordConfirmation string, ema
 		return nil, err
 	}
 
-	user, err := s.repo.CreateUser(email, string(hash))
+	user, err := s.repo.CreateUser(tx, email, string(hash))
 	if err != nil {
 		fmt.Println(err)
 		return nil, err
@@ -94,8 +126,9 @@ func (s *GRPCServer) buildUser(password string, passwordConfirmation string, ema
 	return user, nil
 }
 
-func (s *GRPCServer) buildSession(newSessionUUID uuid.UUID, userID int, sessionToken string, furthestExpiration time.Time) (*Session, error) {
-	session, err := s.repo.CreateSession(newSessionUUID, userID, sessionToken, furthestExpiration)
+// move builders elsewhere
+func (s *GRPCServer) buildSession(tx *sql.Tx, newSessionUUID uuid.UUID, userID int, sessionToken string, furthestExpiration time.Time) (*Session, error) {
+	session, err := s.repo.CreateSession(tx, newSessionUUID, userID, sessionToken, furthestExpiration)
 	if err != nil {
 		fmt.Println(err)
 		return nil, err
@@ -104,7 +137,7 @@ func (s *GRPCServer) buildSession(newSessionUUID uuid.UUID, userID int, sessionT
 	return session, nil
 }
 
-func (s *GRPCServer) buildScopeGroupings(protoScopeGroupings []*proto.ScopeGrouping, sessionID int) ([]*ScopeGrouping, error) {
+func (s *GRPCServer) buildScopeGroupings(tx *sql.Tx, protoScopeGroupings []*proto.ScopeGrouping, sessionID int) ([]*ScopeGrouping, error) {
 	scopeGroupings := make([]*ScopeGrouping, len(protoScopeGroupings))
 	for i, sg := range protoScopeGroupings {
 		exp, err := ptypes.Timestamp(sg.Expiration)
@@ -113,7 +146,7 @@ func (s *GRPCServer) buildScopeGroupings(protoScopeGroupings []*proto.ScopeGroup
 			return nil, err
 		}
 
-		scopeGrouping, err := s.repo.CreateScopeGrouping(sessionID, sg.Scopes, exp)
+		scopeGrouping, err := s.repo.CreateScopeGrouping(tx, sessionID, sg.Scopes, exp)
 		if err != nil {
 			fmt.Println(err)
 			return nil, err
@@ -125,7 +158,7 @@ func (s *GRPCServer) buildScopeGroupings(protoScopeGroupings []*proto.ScopeGroup
 }
 
 func (s *GRPCServer) buildToken(user *User, sessionUUID uuid.UUID, protoScopeGroupings []*proto.ScopeGrouping) (tokenStr string, json string, furthestExpiration time.Time, err error) {
-	tf := token.NewTokenFactory(user.uuid, sessionUUID.String())
+	tf := session_representations.NewTokenFactory(user.uuid, sessionUUID.String())
 	for _, sg := range protoScopeGroupings {
 		exp, err := ptypes.Timestamp(sg.Expiration)
 		if err != nil {
