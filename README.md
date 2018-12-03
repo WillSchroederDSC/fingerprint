@@ -1,4 +1,4 @@
-# Fingerprint
+# Fingerprint (README out of date)
 
 A customer authentication/authorization microsevice in Go. It allows for user authorization both synchronously and asynchronously. 
 
