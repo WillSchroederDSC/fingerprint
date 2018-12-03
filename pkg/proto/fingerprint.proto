@@ -87,19 +87,14 @@ message ResetUserPasswordResponse {
 }
 
 message CreateSessionRevokeRequest {
-    oneof revoke {
+    oneof customer {
         string uuid = 1;
-        string token = 2;
+        string email = 2;
     }
 }
 
 message CreateSessionRevokeResponse {
-    enum Status {
-        REVOKED_UUID = 0;
-        REVOKED_TOKEN = 1;
-        NO_SESSION_FOUND = 3;
-    }
-    Status status = 1;
+    int32 number_of_session_revoked = 1;
 }
 
 message GetSessionRequest {

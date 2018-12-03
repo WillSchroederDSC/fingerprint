@@ -6,12 +6,11 @@ import (
 )
 
 func TestCreateToken(t *testing.T) {
-	factory := NewTokenFactory("111", "222", true)
+	factory := NewTokenFactory("111", "222")
 	factory.AddScopeGrouping([]string{"read", "write"}, time.Now())
 	factory.AddScopeGrouping([]string{"test", "another"}, time.Now())
-	json, _ := factory.GenerateJSON()
-	println(json)
-	token, _ := factory.GenerateToken()
-	println(token)
-	DecodeTokenToJson(token)
+	session, _ := factory.GenerateSession()
+	println(session.Json)
+	println(session.Token)
+	DecodeTokenToJson(session.Token)
 }

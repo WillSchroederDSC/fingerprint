@@ -116,11 +116,13 @@ func (s *GRPCServer) CreateSession(_ context.Context, request *proto.CreateSessi
 
 	session, err := s.builder.buildSession(tx, sessionUUID, user.id, sessionToken, furthestExpiration)
 	if err != nil {
+		tx.Rollback()
 		panic(err)
 	}
 
 	_, err = s.builder.buildScopeGroupings(tx, request.ScopeGroupings, session.id)
 	if err != nil {
+		tx.Rollback()
 		panic(err)
 	}
 
@@ -142,6 +144,8 @@ func (s *GRPCServer) GetSession(_ context.Context, request *proto.GetSessionRequ
 	}
 
 	json := session_representations.DecodeTokenToJson(session.token)
+
+	// TODO Respect session revokes
 
 	return &proto.GetSessionResponse{Session:&proto.Session{Uuid:session.uuid, Token:session.token, Json:json}}, nil
 }
