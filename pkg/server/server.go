@@ -18,10 +18,7 @@ func NewServer() {
 	dao := db.ConnectToDatabase()
 	defer dao.Conn.Close()
 	repo := &Repo{dao:dao}
-	server := &GRPCServer{
-		dao: dao,
-		repo:repo,
-	}
+	server := NewGRPCServer(repo,dao)
 
 	// GRPC Setup, taken from google's Hello World example
 	lis, err := net.Listen("tcp", port)

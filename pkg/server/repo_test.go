@@ -17,7 +17,7 @@ func TestMain(m *testing.M) {
 	testDAO = db.ConnectToDatabase()
 	defer testDAO.Conn.Close()
 	testRepo = &Repo{dao: testDAO}
-	testServer = &GRPCServer{repo: testRepo, dao: testDAO}
+	testServer = NewGRPCServer(testRepo,testDAO)
 	code := m.Run()
 	os.Exit(code)
 }

@@ -48,7 +48,7 @@ func (r *Repo) GetUserWithUUID(tx *sql.Tx, userUUID string) (*User, error) {
 func (r *Repo) CreateSession(tx *sql.Tx, newSessionUUID uuid.UUID, userId int, token string, expiration time.Time) (*Session, error) {
 	sessionUUID := newSessionUUID.String()
 
-	sqlStatement := "INSERT INTO sessions (uuid, user_id, session_representations, expiration, created_at) VALUES ($1, $2, $3, $4, $5)"
+	sqlStatement := "INSERT INTO sessions (uuid, user_id, token, expiration, created_at) VALUES ($1, $2, $3, $4, $5)"
 	_, err := tx.Exec(sqlStatement, sessionUUID, userId, token, time.Now().UTC(), time.Now().UTC())
 	if err != nil {
 		panic(err)
@@ -65,7 +65,7 @@ func (r *Repo) CreateSession(tx *sql.Tx, newSessionUUID uuid.UUID, userId int, t
 }
 
 func (r *Repo) GetSessionWithUUID(tx *sql.Tx, sessionUUID string) (*Session, error) {
-	sqlStatement := "SELECT id,uuid,session_representations,expiration FROM sessions WHERE uuid=$1"
+	sqlStatement := "SELECT id,uuid,token,expiration FROM sessions WHERE uuid=$1"
 
 	row := tx.QueryRow(sqlStatement, sessionUUID)
 	var session Session
