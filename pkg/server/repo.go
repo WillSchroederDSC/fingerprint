@@ -22,7 +22,7 @@ func (r *Repo) CreateUser(tx *sql.Tx, email string, encryptedPassword string) (*
 		return nil, err
 	}
 
-	user, err := r.GetUserWithUUID(tx, userUUID)
+	user, err := r.GetUserWithUUIDUsingTx(tx, userUUID)
 	if err != nil {
 		panic(err)
 		return nil, err
@@ -31,12 +31,41 @@ func (r *Repo) CreateUser(tx *sql.Tx, email string, encryptedPassword string) (*
 	return user, nil
 }
 
-func (r *Repo) GetUserWithUUID(tx *sql.Tx, userUUID string) (*User, error) {
-	sqlStatement := "SELECT id,uuid,email FROM users WHERE uuid=$1"
+func (r *Repo) GetUserWithUUID(userUUID string) (*User, error) {
+	sqlStatement := "SELECT id,uuid,email,encrypted_password FROM users WHERE uuid=$1"
+
+	row := r.dao.Conn.QueryRow(sqlStatement, userUUID)
+	var user User
+	err := row.Scan(&user.id, &user.uuid, &user.email, &user.encryptedPassword)
+	if err != nil {
+		panic(err)
+		return nil, err
+	}
+
+	return &user, nil
+}
+
+func (r *Repo) GetUserWithEmail(email string) (*User, error) {
+	sqlStatement := "SELECT id,uuid,email,encrypted_password FROM users WHERE email=$1"
+
+	row := r.dao.Conn.QueryRow(sqlStatement, email)
+	var user User
+	err := row.Scan(&user.id, &user.uuid, &user.email, &user.encryptedPassword)
+	if err != nil {
+		panic(err)
+		return nil, err
+	}
+
+	return &user, nil
+}
+
+
+func (r *Repo) GetUserWithUUIDUsingTx(tx *sql.Tx, userUUID string) (*User, error) {
+	sqlStatement := "SELECT id,uuid,email,encrypted_password FROM users WHERE uuid=$1"
 
 	row := tx.QueryRow(sqlStatement, userUUID)
 	var user User
-	err := row.Scan(&user.id, &user.uuid, &user.email)
+	err := row.Scan(&user.id, &user.uuid, &user.email, &user.encryptedPassword)
 	if err != nil {
 		panic(err)
 		return nil, err
@@ -55,7 +84,7 @@ func (r *Repo) CreateSession(tx *sql.Tx, newSessionUUID uuid.UUID, userId int, t
 		return nil, err
 	}
 
-	session, err := r.GetSessionWithUUID(tx, sessionUUID)
+	session, err := r.GetSessionWithUUIDUsingTx(tx, sessionUUID)
 	if err != nil {
 		panic(err)
 		return nil, err
@@ -64,10 +93,24 @@ func (r *Repo) CreateSession(tx *sql.Tx, newSessionUUID uuid.UUID, userId int, t
 	return session, nil
 }
 
-func (r *Repo) GetSessionWithUUID(tx *sql.Tx, sessionUUID string) (*Session, error) {
+func (r *Repo) GetSessionWithUUIDUsingTx(tx *sql.Tx, sessionUUID string) (*Session, error) {
 	sqlStatement := "SELECT id,uuid,token,expiration FROM sessions WHERE uuid=$1"
 
 	row := tx.QueryRow(sqlStatement, sessionUUID)
+	var session Session
+	err := row.Scan(&session.id, &session.uuid, &session.token, &session.expiration)
+	if err != nil {
+		panic(err)
+		return nil, err
+	}
+
+	return &session, nil
+}
+
+func (r *Repo) GetSessionWithToken(token string) (*Session, error) {
+	sqlStatement := "SELECT id,uuid,token,expiration FROM sessions WHERE token=$1"
+
+	row := r.dao.Conn.QueryRow(sqlStatement, token)
 	var session Session
 	err := row.Scan(&session.id, &session.uuid, &session.token, &session.expiration)
 	if err != nil {

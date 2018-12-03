@@ -10,6 +10,7 @@ type User struct {
 	id int
 	uuid string
 	email string
+	encryptedPassword string
 }
 
 func (u *User) ConvertToProtobuff() *proto.User {

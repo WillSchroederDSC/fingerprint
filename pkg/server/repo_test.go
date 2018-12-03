@@ -51,7 +51,7 @@ func TestRepoCreateUser(t *testing.T) {
 func TestRepoGetUser(t *testing.T) {
 	testUser := createTestUser()
 	tx, _ := testDAO.Conn.Begin()
-	gotUser, err := testRepo.GetUserWithUUID(tx, testUser.uuid)
+	gotUser, err := testRepo.GetUserWithUUIDUsingTx(tx, testUser.uuid)
 	if err != nil {
 		t.Fatal(err)
 	}

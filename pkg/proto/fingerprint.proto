@@ -12,7 +12,7 @@ service FingerprintService {
     rpc CreatePasswordResetToken (CreatePasswordResetTokenResponse) returns (CreatePasswordResetTokenResponse) {}
     rpc UpdateUserPassword (ResetUserPasswordRequest) returns (ResetUserPasswordResponse) {}
 
-    rpc CreateSession (CreatePasswordResetTokenRequest) returns (CreatePasswordResetTokenResponse) {}
+    rpc CreateSession (CreateSessionRequest) returns (CreateSessionResponse) {}
     rpc CreateSessionRevoke (CreateSessionRevokeRequest) returns (CreateSessionRevokeResponse) {}
     rpc GetSession (GetSessionRequest) returns (GetSessionResponse) {}
 }
@@ -103,10 +103,7 @@ message CreateSessionRevokeResponse {
 }
 
 message GetSessionRequest {
-    oneof revoke {
-        string uuid = 1;
-        string token = 2;
-    }
+    string token = 1;
 }
 
 message GetSessionResponse {
