@@ -6,3 +6,4 @@ Build cleaner
 Fill out client
 Allow configuration for commands, fill out cobra text
 Update README
+Write a ton of tests
