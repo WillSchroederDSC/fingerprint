@@ -25,7 +25,11 @@ func (s *GRPCServer) CreateUser(_ context.Context, request *proto.CreateUserRequ
 		panic(err)
 	}
 
-	user, err := s.builder.buildUser(tx, request.Password, request.PasswordConfirmation, request.Email)
+	user, err := s.builder.buildUser(tx, request.Email, request.Password, request.PasswordConfirmation)
+	if err != nil {
+		tx.Rollback()
+		panic(err)
+	}
 
 	sessionUUID := uuid.New()
 	sessionToken, json, furthestExpiration, err := s.builder.buildToken(user, sessionUUID, request.ScopeGroupings)
@@ -74,16 +78,58 @@ func (s *GRPCServer) GetUser(_ context.Context, request *proto.GetUserRequest) (
 	return nil, errors.New("unknown user identifier")
 }
 
-func (s *GRPCServer) CreateGuestUser(context.Context, *proto.CreateGuestUserRequest) (*proto.CreateGuestUserResponse, error) {
-	panic("implement me")
+func (s *GRPCServer) CreateGuestUser(_ context.Context, request *proto.CreateGuestUserRequest) (*proto.CreateGuestUserResponse, error) {
+	tx, err :=  s.dao.Conn.Begin()
+	if err != nil {
+		panic(err)
+	}
+
+	user, err := s.builder.buildGuestUser(tx,request.Email)
+
+	sessionUUID := uuid.New()
+	sessionToken, json, furthestExpiration, err := s.builder.buildToken(user, sessionUUID, request.ScopeGroupings)
+	if err != nil {
+		tx.Rollback()
+		panic(err)
+	}
+
+
+	session, err := s.builder.buildSession(tx, sessionUUID, user.id, sessionToken, furthestExpiration)
+	if err != nil {
+		tx.Rollback()
+		panic(err)
+	}
+
+	_, err = s.builder.buildScopeGroupings(tx, request.ScopeGroupings, session.id)
+	if err != nil {
+		tx.Rollback()
+		panic(err)
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		panic(err)
+	}
+
+	return &proto.CreateGuestUserResponse{User:user.ConvertToProtobuff(), Session:session.ConvertToProtobuff(json)}, nil
 }
 
-func (s *GRPCServer) CreatePasswordResetToken(context.Context, *proto.CreatePasswordResetTokenResponse) (*proto.CreatePasswordResetTokenResponse, error) {
-	panic("implement me")
+func (s *GRPCServer) CreatePasswordResetToken(_ context.Context, request *proto.CreatePasswordResetTokenRequest) (*proto.CreatePasswordResetTokenResponse, error) {
+	token, err := s.repo.UpdateUserPasswordResetToken(request.Email)
+	if err != nil {
+		panic(err)
+	}
+
+	return &proto.CreatePasswordResetTokenResponse{PasswordResetToken:token}, nil
 }
 
-func (s *GRPCServer) UpdateUserPassword(context.Context, *proto.ResetUserPasswordRequest) (*proto.ResetUserPasswordResponse, error) {
-	panic("implement me")
+func (s *GRPCServer) UpdateUserPassword(_ context.Context, request *proto.ResetUserPasswordRequest) (*proto.ResetUserPasswordResponse, error) {
+	err := s.builder.updateUserPassword(request.Email,request.PasswordResetToken,request.Password,request.PasswordConfirmation)
+	if err != nil {
+		panic(err)
+	}
+
+	return &proto.ResetUserPasswordResponse{Status:proto.ResetUserPasswordResponse_SUCCESSFUL}, nil
 }
 
 func (s *GRPCServer) CreateSession(_ context.Context, request *proto.CreateSessionRequest) (*proto.CreateSessionResponse, error) {
@@ -133,10 +179,6 @@ func (s *GRPCServer) CreateSession(_ context.Context, request *proto.CreateSessi
 	return &proto.CreateSessionResponse{Session: &proto.Session{Uuid:session.uuid, Token:sessionToken, Json:json}}, nil
 }
 
-func (s *GRPCServer) CreateSessionRevoke(context.Context, *proto.CreateSessionRevokeRequest) (*proto.CreateSessionRevokeResponse, error) {
-	panic("implement me")
-}
-
 func (s *GRPCServer) GetSession(_ context.Context, request *proto.GetSessionRequest) (*proto.GetSessionResponse, error) {
 	session, err := s.repo.GetSessionWithToken(request.Token)
 	if err != nil {
@@ -145,7 +187,14 @@ func (s *GRPCServer) GetSession(_ context.Context, request *proto.GetSessionRequ
 
 	json := session_representations.DecodeTokenToJson(session.token)
 
-	// TODO Respect session revokes
-
 	return &proto.GetSessionResponse{Session:&proto.Session{Uuid:session.uuid, Token:session.token, Json:json}}, nil
+}
+
+func (s *GRPCServer) DeleteSession(_ context.Context, request *proto.DeleteSessionRequest) (*proto.DeleteSessionResponse, error) {
+	successful, err := s.repo.DeleteSessionWithUUID(request.Uuid)
+	if err != nil {
+		panic(err)
+	}
+
+	return &proto.DeleteSessionResponse{Successful:successful}, nil
 }

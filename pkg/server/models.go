@@ -11,6 +11,8 @@ type User struct {
 	uuid string
 	email string
 	encryptedPassword string
+	isGuest bool
+	passwordResetToken string
 }
 
 func (u *User) ConvertToProtobuff() *proto.User {

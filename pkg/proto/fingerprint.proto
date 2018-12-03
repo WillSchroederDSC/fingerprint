@@ -9,11 +9,11 @@ service FingerprintService {
     rpc CreateUser (CreateUserRequest) returns (CreateUserResponse) {}
     rpc CreateGuestUser (CreateGuestUserRequest) returns (CreateGuestUserResponse) {}
 
-    rpc CreatePasswordResetToken (CreatePasswordResetTokenResponse) returns (CreatePasswordResetTokenResponse) {}
+    rpc CreatePasswordResetToken (CreatePasswordResetTokenRequest) returns (CreatePasswordResetTokenResponse) {}
     rpc UpdateUserPassword (ResetUserPasswordRequest) returns (ResetUserPasswordResponse) {}
 
     rpc CreateSession (CreateSessionRequest) returns (CreateSessionResponse) {}
-    rpc CreateSessionRevoke (CreateSessionRevokeRequest) returns (CreateSessionRevokeResponse) {}
+    rpc DeleteSession (DeleteSessionRequest) returns (DeleteSessionResponse) {}
     rpc GetSession (GetSessionRequest) returns (GetSessionResponse) {}
 }
 
@@ -86,15 +86,12 @@ message ResetUserPasswordResponse {
     Status status = 1;
 }
 
-message CreateSessionRevokeRequest {
-    oneof customer {
-        string uuid = 1;
-        string email = 2;
-    }
+message DeleteSessionRequest {
+    string uuid = 1;
 }
 
-message CreateSessionRevokeResponse {
-    int32 number_of_session_revoked = 1;
+message DeleteSessionResponse {
+    bool successful = 1;
 }
 
 message GetSessionRequest {

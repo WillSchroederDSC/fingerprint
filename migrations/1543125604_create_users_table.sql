@@ -3,6 +3,8 @@ CREATE TABLE users (
                      id SERIAL PRIMARY KEY,
                      uuid uuid NOT NULL UNIQUE,
                      email TEXT NOT NULL UNIQUE,
+                     is_guest BOOLEAN NOT NULL,
+                     password_reset_token TEXT NOT NULL UNIQUE,
                      encrypted_password TEXT NOT NULL,
                      created_at TIMESTAMPTZ NOT NULL
 );
@@ -10,7 +12,7 @@ CREATE INDEX users_uuid ON users (uuid);
 CREATE TABLE sessions (
                     id SERIAL PRIMARY KEY,
                     uuid uuid NOT NULL UNIQUE,
-                    user_id INTEGER REFERENCES users(id),
+                    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE NOT NULL,
                     token TEXT NOT NULL,
                     expiration TIMESTAMPTZ NOT NULL,
                     created_at TIMESTAMPTZ NOT NULL
@@ -21,7 +23,7 @@ create INDEX sessions_token ON sessions (token);
 CREATE TABLE scope_groupings (
                     id SERIAL PRIMARY KEY,
                     uuid uuid NOT NULL UNIQUE,
-                    session_id INTEGER REFERENCES sessions(id),
+                    session_id INTEGER REFERENCES sessions(id) ON DELETE CASCADE NOT NULL,
                     scopes TEXT[] NOT NULL,
                     expiration TIMESTAMPTZ NOT NULL,
                     created_at TIMESTAMPTZ NOT NULL

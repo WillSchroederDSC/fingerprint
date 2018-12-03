@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/google/uuid"
+	"github.com/thanhpk/randstr"
 	"github.com/willschroeder/fingerprint/pkg/db"
 	"github.com/willschroeder/fingerprint/pkg/proto"
 	"github.com/willschroeder/fingerprint/pkg/session_representations"
@@ -26,7 +27,7 @@ func BuildPasswordHash(password string) (string, error) {
 	return string(hash), nil
 }
 
-func (b *Builder) buildUser(tx *sql.Tx, password string, passwordConfirmation string, email string) (*User, error) {
+func (b *Builder) buildUser(tx *sql.Tx,  email string, password string, passwordConfirmation string) (*User, error) {
 	if password != passwordConfirmation {
 		return nil, errors.New("password and confirmation don't match")
 	}
@@ -36,7 +37,50 @@ func (b *Builder) buildUser(tx *sql.Tx, password string, passwordConfirmation st
 		panic(err)
 	}
 
-	user, err := b.repo.CreateUser(tx, email, hash)
+	user, err := b.repo.CreateUser(tx, email, hash, false)
+	if err != nil {
+		panic(err)
+	}
+
+	return user, nil
+}
+
+func (b *Builder) updateUserPassword(email string, passwordResetToken string, password string, passwordConfirmation string) error {
+	if password != passwordConfirmation {
+		return errors.New("password and confirmation don't match")
+	}
+
+	hash, err := BuildPasswordHash(password)
+	if err != nil {
+		panic(err)
+	}
+
+	user, err := b.repo.GetUserWithEmail(email)
+	if err != nil {
+		panic(err)
+	}
+
+	if passwordResetToken != user.passwordResetToken {
+		return errors.New("current user reset token does not match given reset token")
+	}
+
+	err = b.repo.UpdateUserPassword(email, hash)
+	if err != nil {
+		panic(err)
+	}
+
+	return nil
+}
+
+func (b *Builder) buildGuestUser(tx *sql.Tx, email string) (*User, error) {
+	hash, err := BuildPasswordHash(randstr.String(16))
+	if err != nil {
+		panic(err)
+	}
+
+	email = email + "." + randstr.String(16) + ".guest"
+
+	user, err := b.repo.CreateUser(tx, email, hash, true)
 	if err != nil {
 		panic(err)
 	}

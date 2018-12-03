@@ -33,7 +33,7 @@ func TestCreateUser(t *testing.T) {
 }
 
 func TestGetUserWithUUID(t *testing.T) {
-	user := createTestUser()
+	user := createTestUser(false)
 	req := &proto.GetUserRequest{
 		Identifier: &proto.GetUserRequest_Uuid{
 			Uuid: user.uuid,
