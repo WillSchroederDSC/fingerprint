@@ -4,6 +4,6 @@ Make sure that certain commands cant be executed on guest users
 Respect GRPC enums, and handle not found cases in repo instead of returning SQL errors
 Build cleaner
 Fill out client
-Allow configuration for commands, fill out cobra text
+Allow configuration for commands, fill out cobra text, allow secret to be set
 Update README
 Write a ton of tests
