@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"github.com/google/uuid"
 	"github.com/lib/pq"
-	"github.com/thanhpk/randstr"
 	"github.com/willschroeder/fingerprint/pkg/db"
 	"time"
 )
@@ -16,8 +15,8 @@ type Repo struct {
 func (r *Repo) CreateUser(tx *sql.Tx, email string, encryptedPassword string, isGuest bool) (*User, error) {
 	userUUID := uuid.New().String()
 
-	sqlStatement := "INSERT INTO users (uuid, email, encrypted_password, is_guest, password_reset_token, created_at) VALUES ($1, $2, $3, $4, $5, $6)"
-	_, err := tx.Exec(sqlStatement, userUUID, email, encryptedPassword, isGuest, randstr.String(16), time.Now().UTC())
+	sqlStatement := "INSERT INTO users (uuid, email, encrypted_password, is_guest, created_at) VALUES ($1, $2, $3, $4, $5)"
+	_, err := tx.Exec(sqlStatement, userUUID, email, encryptedPassword, isGuest, time.Now().UTC())
 	if err != nil {
 		panic(err)
 	}
@@ -30,23 +29,12 @@ func (r *Repo) CreateUser(tx *sql.Tx, email string, encryptedPassword string, is
 	return user, nil
 }
 
-func (r *Repo) UpdateUserPasswordResetToken(email string) (string, error) {
-	newResetToken:= randstr.String(16)
-	sqlStatement := "UPDATE users SET password_reset_token=$1 WHERE email=$2"
-	_, err := r.dao.Conn.Exec(sqlStatement, newResetToken, email)
-	if err != nil {
-		panic(err)
-	}
-
-	return newResetToken, nil
-}
-
 func (r *Repo) GetUserWithUUID(userUUID string) (*User, error) {
-	sqlStatement := "SELECT id,uuid,email,encrypted_password,is_guest,password_reset_token FROM users WHERE uuid=$1"
+	sqlStatement := "SELECT id,uuid,email,encrypted_password,is_guest FROM users WHERE uuid=$1"
 
 	row := r.dao.Conn.QueryRow(sqlStatement, userUUID)
 	var user User
-	err := row.Scan(&user.id, &user.uuid, &user.email, &user.encryptedPassword, &user.isGuest, &user.passwordResetToken)
+	err := row.Scan(&user.id, &user.uuid, &user.email, &user.encryptedPassword, &user.isGuest)
 	if err != nil {
 		panic(err)
 	}
@@ -55,10 +43,8 @@ func (r *Repo) GetUserWithUUID(userUUID string) (*User, error) {
 }
 
 func (r *Repo) UpdateUserPassword(email string, encryptedPassword string) error {
-	// Generate new token so the old one cant be used again
-	newResetToken:= randstr.String(16)
-	sqlStatement := "UPDATE users SET encrypted_password=$1,password_reset_token=$2 WHERE email=$3"
-	_, err := r.dao.Conn.Exec(sqlStatement, newResetToken, email)
+	sqlStatement := "UPDATE users SET encrypted_password=$1WHERE email=$3"
+	_, err := r.dao.Conn.Exec(sqlStatement, email)
 	if err != nil {
 		panic(err)
 	}
@@ -67,11 +53,11 @@ func (r *Repo) UpdateUserPassword(email string, encryptedPassword string) error 
 }
 
 func (r *Repo) GetUserWithEmail(email string) (*User, error) {
-	sqlStatement := "SELECT id,uuid,email,encrypted_password,is_guest,password_reset_token FROM users WHERE email=$1"
+	sqlStatement := "SELECT id,uuid,email,encrypted_password,is_guest FROM users WHERE email=$1"
 
 	row := r.dao.Conn.QueryRow(sqlStatement, email)
 	var user User
-	err := row.Scan(&user.id, &user.uuid, &user.email, &user.encryptedPassword, &user.isGuest, &user.passwordResetToken)
+	err := row.Scan(&user.id, &user.uuid, &user.email, &user.encryptedPassword, &user.isGuest)
 	if err != nil {
 		panic(err)
 	}
@@ -81,11 +67,11 @@ func (r *Repo) GetUserWithEmail(email string) (*User, error) {
 
 
 func (r *Repo) GetUserWithUUIDUsingTx(tx *sql.Tx, userUUID string) (*User, error) {
-	sqlStatement := "SELECT id,uuid,email,encrypted_password,is_guest,password_reset_token FROM users WHERE uuid=$1"
+	sqlStatement := "SELECT id,uuid,email,encrypted_password,is_guest FROM users WHERE uuid=$1"
 
 	row := tx.QueryRow(sqlStatement, userUUID)
 	var user User
-	err := row.Scan(&user.id, &user.uuid, &user.email, &user.encryptedPassword, &user.isGuest, &user.passwordResetToken)
+	err := row.Scan(&user.id, &user.uuid, &user.email, &user.encryptedPassword, &user.isGuest)
 	if err != nil {
 		panic(err)
 	}
@@ -163,11 +149,51 @@ func (r *Repo) GetScopeGroupingWithUUID(tx *sql.Tx, groupingUUID string) (*Scope
 
 	return &sg, nil
 }
-func (r *Repo) DeleteSessionWithUUID(sessionUUID string) (bool, error) {
+
+func (r *Repo) DeleteSessionWithUUID(sessionUUID string) error {
 	sqlStatement := "DELETE FROM sessions WHERE uuid=$1"
 	_, err := r.dao.Conn.Exec(sqlStatement, sessionUUID)
 	if err != nil {
 		panic(err)
 	}
-	return false, nil
+	return nil
+}
+
+func (r *Repo) CreatePasswordResetToken(userId int, expiration time.Time) (*PasswordResetToken, error) {
+	resetUUID := uuid.New().String()
+	newResetToken:= db.RandomString(16)
+	sqlStatement := "INSERT INTO password_reset_tokens (uuid, user_id, token, expiration, created_at) VALUES ($1, $2, $3, $4, $5)"
+	_, err := r.dao.Conn.Exec(sqlStatement, resetUUID, userId, newResetToken, expiration, time.Now().UTC())
+	if err != nil {
+		panic(err)
+	}
+
+	prt, err := r.GetPasswordResetToken(resetUUID)
+	if err != nil {
+		panic(err)
+	}
+
+	return prt, nil
+}
+
+func (r *Repo) GetPasswordResetToken(resetUUID string) (*PasswordResetToken, error) {
+	sqlStatement := "SELECT uuid,user_id,token,expiration FROM password_reset_tokens WHERE uuid=$1"
+	row := r.dao.Conn.QueryRow(sqlStatement, resetUUID)
+	var t PasswordResetToken
+	err := row.Scan(&t.uuid,&t.userId,&t.token,&t.expiration)
+	if err != nil {
+		panic(err)
+	}
+
+	return &t, nil
+}
+
+func (r *Repo) DeletePasswordResetToken(resetUUID string) error {
+	sqlStatement := "DELETE FROM password_reset_tokens WHERE uuid=$1"
+	_, err := r.dao.Conn.Exec(sqlStatement, resetUUID)
+	if err != nil {
+		panic(err)
+	}
+
+	return nil
 }

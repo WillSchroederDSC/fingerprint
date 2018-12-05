@@ -87,7 +87,10 @@ message ResetUserPasswordResponse {
 }
 
 message DeleteSessionRequest {
-    string uuid = 1;
+    oneof representation {
+        string uuid = 1;
+        string token = 2;
+    }
 }
 
 message DeleteSessionResponse {

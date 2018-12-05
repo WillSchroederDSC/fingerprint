@@ -7,42 +7,42 @@ import (
 )
 
 type User struct {
-	id int
-	uuid string
-	email string
-	encryptedPassword string
-	isGuest bool
+	id                 int
+	uuid               string
+	email              string
+	encryptedPassword  string
+	isGuest            bool
 	passwordResetToken string
 }
 
 func (u *User) ConvertToProtobuff() *proto.User {
 	return &proto.User{
-		Uuid: u.uuid,
+		Uuid:  u.uuid,
 		Email: u.email,
 	}
 }
 
 type Session struct {
-	id int
-	uuid string
-	token string
-	customerId int
+	id         int
+	uuid       string
+	token      string
+	userId     int
 	expiration time.Time
 }
 
 func (s *Session) ConvertToProtobuff(json string) *proto.Session {
 	return &proto.Session{
-		Uuid: s.uuid,
+		Uuid:  s.uuid,
 		Token: s.token,
-		Json: json,
+		Json:  json,
 	}
 }
 
 type ScopeGrouping struct {
-	id int
-	uuid string
-	sessionId int
-	scopes []string
+	id         int
+	uuid       string
+	sessionId  int
+	scopes     []string
 	expiration time.Time
 }
 
@@ -53,7 +53,14 @@ func (sg *ScopeGrouping) ConvertToProtobuff() (*proto.ScopeGrouping, error) {
 	}
 
 	return &proto.ScopeGrouping{
-		Scopes: sg.scopes,
+		Scopes:     sg.scopes,
 		Expiration: timestamp,
 	}, nil
+}
+
+type PasswordResetToken struct {
+	uuid       string
+	userId     int
+	token      string
+	expiration time.Time
 }

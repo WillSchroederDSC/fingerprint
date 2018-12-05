@@ -5,7 +5,6 @@ import (
 	"errors"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/google/uuid"
-	"github.com/thanhpk/randstr"
 	"github.com/willschroeder/fingerprint/pkg/db"
 	"github.com/willschroeder/fingerprint/pkg/proto"
 	"github.com/willschroeder/fingerprint/pkg/session_representations"
@@ -73,12 +72,12 @@ func (b *Builder) updateUserPassword(email string, passwordResetToken string, pa
 }
 
 func (b *Builder) buildGuestUser(tx *sql.Tx, email string) (*User, error) {
-	hash, err := BuildPasswordHash(randstr.String(16))
+	hash, err := BuildPasswordHash("REPLACEME")
 	if err != nil {
 		panic(err)
 	}
 
-	email = email + "." + randstr.String(16) + ".guest"
+	email = email + "." + "REPLACEME" + ".guest"
 
 	user, err := b.repo.CreateUser(tx, email, hash, true)
 	if err != nil {

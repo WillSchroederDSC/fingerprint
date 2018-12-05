@@ -115,12 +115,13 @@ func (s *GRPCServer) CreateGuestUser(_ context.Context, request *proto.CreateGue
 }
 
 func (s *GRPCServer) CreatePasswordResetToken(_ context.Context, request *proto.CreatePasswordResetTokenRequest) (*proto.CreatePasswordResetTokenResponse, error) {
-	token, err := s.repo.UpdateUserPasswordResetToken(request.Email)
-	if err != nil {
-		panic(err)
-	}
-
-	return &proto.CreatePasswordResetTokenResponse{PasswordResetToken:token}, nil
+	//token, err := s.repo.UpdateUserPasswordResetToken(request.Email)
+	//if err != nil {
+	//	panic(err)
+	//}
+	//
+	//return &proto.CreatePasswordResetTokenResponse{PasswordResetToken:token}, nil
+	panic("soon")
 }
 
 func (s *GRPCServer) UpdateUserPassword(_ context.Context, request *proto.ResetUserPasswordRequest) (*proto.ResetUserPasswordResponse, error) {
@@ -191,10 +192,10 @@ func (s *GRPCServer) GetSession(_ context.Context, request *proto.GetSessionRequ
 }
 
 func (s *GRPCServer) DeleteSession(_ context.Context, request *proto.DeleteSessionRequest) (*proto.DeleteSessionResponse, error) {
-	successful, err := s.repo.DeleteSessionWithUUID(request.Uuid)
-	if err != nil {
-		panic(err)
-	}
-
-	return &proto.DeleteSessionResponse{Successful:successful}, nil
+	//successful, err := s.repo.DeleteSessionWithUUID(request.Uuid)
+	//if err != nil {
+	//	panic(err)
+	//}
+	//
+	return &proto.DeleteSessionResponse{Successful:false}, nil
 }
