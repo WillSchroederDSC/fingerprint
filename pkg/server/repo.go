@@ -65,7 +65,6 @@ func (r *Repo) GetUserWithEmail(email string) (*User, error) {
 	return &user, nil
 }
 
-
 func (r *Repo) GetUserWithUUIDUsingTx(tx *sql.Tx, userUUID string) (*User, error) {
 	sqlStatement := "SELECT id,uuid,email,encrypted_password,is_guest FROM users WHERE uuid=$1"
 
@@ -142,7 +141,7 @@ func (r *Repo) GetScopeGroupingWithUUID(tx *sql.Tx, groupingUUID string) (*Scope
 	sqlStatement := "SELECT id,uuid,scopes,expiration FROM scope_groupings WHERE uuid=$1"
 	row := tx.QueryRow(sqlStatement, groupingUUID)
 	var sg ScopeGrouping
-	err := row.Scan(&sg.id,&sg.uuid,pq.Array(&sg.scopes),&sg.expiration)
+	err := row.Scan(&sg.id, &sg.uuid, pq.Array(&sg.scopes), &sg.expiration)
 	if err != nil {
 		panic(err)
 	}
@@ -161,7 +160,7 @@ func (r *Repo) DeleteSessionWithUUID(sessionUUID string) error {
 
 func (r *Repo) CreatePasswordResetToken(userId int, expiration time.Time) (*PasswordResetToken, error) {
 	resetUUID := uuid.New().String()
-	newResetToken:= db.RandomString(16)
+	newResetToken := db.RandomString(16)
 	sqlStatement := "INSERT INTO password_reset_tokens (uuid, user_id, token, expiration, created_at) VALUES ($1, $2, $3, $4, $5)"
 	_, err := r.dao.Conn.Exec(sqlStatement, resetUUID, userId, newResetToken, expiration, time.Now().UTC())
 	if err != nil {
@@ -180,7 +179,7 @@ func (r *Repo) GetPasswordResetToken(resetUUID string) (*PasswordResetToken, err
 	sqlStatement := "SELECT uuid,user_id,token,expiration FROM password_reset_tokens WHERE uuid=$1"
 	row := r.dao.Conn.QueryRow(sqlStatement, resetUUID)
 	var t PasswordResetToken
-	err := row.Scan(&t.uuid,&t.userId,&t.token,&t.expiration)
+	err := row.Scan(&t.uuid, &t.userId, &t.token, &t.expiration)
 	if err != nil {
 		panic(err)
 	}

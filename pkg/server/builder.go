@@ -14,7 +14,7 @@ import (
 
 type Builder struct {
 	repo *Repo
-	dao *db.DAO
+	dao  *db.DAO
 }
 
 func BuildPasswordHash(password string) (string, error) {
@@ -26,7 +26,7 @@ func BuildPasswordHash(password string) (string, error) {
 	return string(hash), nil
 }
 
-func (b *Builder) buildUser(tx *sql.Tx,  email string, password string, passwordConfirmation string) (*User, error) {
+func (b *Builder) buildUser(tx *sql.Tx, email string, password string, passwordConfirmation string) (*User, error) {
 	if password != passwordConfirmation {
 		return nil, errors.New("password and confirmation don't match")
 	}
@@ -129,5 +129,5 @@ func (b *Builder) buildToken(user *User, sessionUUID uuid.UUID, protoScopeGroupi
 		panic(err)
 	}
 
-	return  sess.Token, sess.Json, sess.FurthestExpiration, nil
+	return sess.Token, sess.Json, sess.FurthestExpiration, nil
 }

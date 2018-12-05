@@ -14,8 +14,8 @@ func TestCreateUser(t *testing.T) {
 	twoHour, _ := ptypes.TimestampProto(time.Now().Add(time.Hour * time.Duration(2)))
 
 	req := &proto.CreateUserRequest{
-		Email:gofakeit.Email(),
-		Password: "test",
+		Email:                gofakeit.Email(),
+		Password:             "test",
 		PasswordConfirmation: "test",
 		ScopeGroupings: []*proto.ScopeGrouping{
 			{

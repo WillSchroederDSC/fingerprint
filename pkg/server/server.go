@@ -13,12 +13,11 @@ const (
 	port = ":50051"
 )
 
-
 func NewServer() {
 	dao := db.ConnectToDatabase()
 	defer dao.Conn.Close()
-	repo := &Repo{dao:dao}
-	server := NewGRPCServer(repo,dao)
+	repo := &Repo{dao: dao}
+	server := NewGRPCServer(repo, dao)
 
 	// GRPC Setup, taken from google's Hello World example
 	lis, err := net.Listen("tcp", port)

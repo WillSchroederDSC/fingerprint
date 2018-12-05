@@ -43,4 +43,3 @@ func MigrateUp() {
 func MigrateDown() {
 
 }
-

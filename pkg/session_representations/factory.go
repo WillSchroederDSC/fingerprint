@@ -2,15 +2,15 @@ package session_representations
 
 import (
 	"encoding/json"
+	"errors"
 	"github.com/o1egl/paseto"
 	"time"
-	"errors"
 )
 
 type Factory struct {
-	Version        int    `json:"version"`
-	CustomerUUID   string `json:"customer_id"`
-	SessionUUID    string `json:"session_id"`
+	Version        int                          `json:"version"`
+	CustomerUUID   string                       `json:"customer_id"`
+	SessionUUID    string                       `json:"session_id"`
 	ScopeGroupings []*tokenFactoryScopeGrouping `json:"scope_groupings"`
 }
 
@@ -23,25 +23,25 @@ func (tf *Factory) Valid() error {
 }
 
 type tokenFactoryScopeGrouping struct {
-	Scopes     []string `json:"scopes"`
+	Scopes     []string  `json:"scopes"`
 	Expiration time.Time `json:"expiration"`
 }
 
 type Representations struct {
-	Token string
-	Json string
+	Token              string
+	Json               string
 	FurthestExpiration time.Time
 }
 
 func NewTokenFactory(userUUID string, sessionUUID string) *Factory {
-	return &Factory{Version: 1, CustomerUUID: userUUID, SessionUUID:sessionUUID}
+	return &Factory{Version: 1, CustomerUUID: userUUID, SessionUUID: sessionUUID}
 }
 
 func (tf *Factory) AddScopeGrouping(scopes []string, expiration time.Time) {
-	tf.ScopeGroupings = append(tf.ScopeGroupings, &tokenFactoryScopeGrouping{Scopes: scopes, Expiration:expiration})
+	tf.ScopeGroupings = append(tf.ScopeGroupings, &tokenFactoryScopeGrouping{Scopes: scopes, Expiration: expiration})
 }
 
-func (tf *Factory) GenerateSession() (*Representations,  error) {
+func (tf *Factory) GenerateSession() (*Representations, error) {
 	err := tf.Valid()
 	if err != nil {
 		return nil, err
@@ -52,14 +52,13 @@ func (tf *Factory) GenerateSession() (*Representations,  error) {
 		return nil, err
 	}
 
-
 	jsonStr, err := tf.generateJSON()
 	if err != nil {
 		return nil, err
 	}
 
 	furthestExpiration := tf.findFurthestExpiration()
-	return &Representations{Token: token, Json:jsonStr, FurthestExpiration: furthestExpiration}, nil
+	return &Representations{Token: token, Json: jsonStr, FurthestExpiration: furthestExpiration}, nil
 }
 
 func (tf *Factory) generateToken() (string, error) {
