@@ -78,7 +78,7 @@ func (s *GRPCServer) GetUser(_ context.Context, request *proto.GetUserRequest) (
 		return &proto.GetUserResponse{User: user.ConvertToProtobuff()}, nil
 	}
 
-	return nil, errors.New("unknown user identifier")
+	return nil, errors.New("unknown user identifier type")
 }
 
 func (s *GRPCServer) CreateGuestUser(_ context.Context, request *proto.CreateGuestUserRequest) (*proto.CreateGuestUserResponse, error) {
