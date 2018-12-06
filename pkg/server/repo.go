@@ -78,8 +78,8 @@ func (r *Repo) GetUserWithUUIDUsingTx(tx *sql.Tx, userUUID string) (*User, error
 	return &user, nil
 }
 
-func (r *Repo) CreateSession(tx *sql.Tx, newSessionUUID string, userUUID string, token string, expiration time.Time) (*Session, error) {
-	sqlStatement := "INSERT INTO sessions (uuid, user_uuid, token, expiration, created_at) VALUES ($1, $2, $3, $4, $5)"
+func (r *Repo) CreateSession(tx *sql.Tx, newSessionUUID string, userUUID string, token string) (*Session, error) {
+	sqlStatement := "INSERT INTO sessions (uuid, user_uuid, token, created_at) VALUES ($1, $2, $3, $4)"
 	_, err := tx.Exec(sqlStatement, newSessionUUID, userUUID, token, time.Now().UTC(), time.Now().UTC())
 	if err != nil {
 		panic(err)

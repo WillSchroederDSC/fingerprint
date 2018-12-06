@@ -10,7 +10,5 @@ Create DB bash script
 Update README
 Write a ton of tests
 Redis session caching
-
-Remove experation from session
-Reminder in TODO to store token in cookie, not in local storage, otherwise venerable to session hijack
+Reminder in README to store token in cookie, not in local storage, otherwise venerable to session hijack
 Docker build for go, google search it

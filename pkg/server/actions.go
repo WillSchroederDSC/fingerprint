@@ -8,7 +8,6 @@ import (
 	"github.com/willschroeder/fingerprint/pkg/proto"
 	"github.com/willschroeder/fingerprint/pkg/session_representations"
 	"golang.org/x/crypto/bcrypt"
-	"time"
 )
 
 type Actions struct {
@@ -101,8 +100,8 @@ func (b *Actions) buildGuestUser(tx *sql.Tx, email string) (*User, error) {
 	return user, nil
 }
 
-func (b *Actions) buildSession(tx *sql.Tx, newSessionUUID string, userUUID string, sessionToken string, furthestExpiration time.Time) (*Session, error) {
-	session, err := b.repo.CreateSession(tx, newSessionUUID, userUUID, sessionToken, furthestExpiration)
+func (b *Actions) buildSession(tx *sql.Tx, newSessionUUID string, userUUID string, sessionToken string) (*Session, error) {
+	session, err := b.repo.CreateSession(tx, newSessionUUID, userUUID, sessionToken)
 	if err != nil {
 		panic(err)
 	}
@@ -128,7 +127,7 @@ func (b *Actions) buildScopeGroupings(tx *sql.Tx, protoScopeGroupings []*proto.S
 	return scopeGroupings, nil
 }
 
-func (b *Actions) buildSessionRepresentation(user *User, sessionUUID string, protoScopeGroupings []*proto.ScopeGrouping) (tokenStr string, json string, furthestExpiration time.Time, err error) {
+func (b *Actions) buildSessionRepresentation(user *User, sessionUUID string, protoScopeGroupings []*proto.ScopeGrouping) (tokenStr string, json string, err error) {
 	tf := session_representations.NewTokenFactory(user.uuid, sessionUUID)
 	for _, sg := range protoScopeGroupings {
 		exp, err := ptypes.Timestamp(sg.Expiration)
@@ -143,5 +142,5 @@ func (b *Actions) buildSessionRepresentation(user *User, sessionUUID string, pro
 		panic(err)
 	}
 
-	return sess.Token, sess.Json, sess.FurthestExpiration, nil
+	return sess.Token, sess.Json,nil
 }

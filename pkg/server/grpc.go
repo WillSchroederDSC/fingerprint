@@ -33,13 +33,13 @@ func (s *GRPCServer) CreateUser(_ context.Context, request *proto.CreateUserRequ
 	}
 
 	sessionUUID := uuid.New().String()
-	sessionToken, json, furthestExpiration, err := s.actions.buildSessionRepresentation(user, sessionUUID, request.ScopeGroupings)
+	sessionToken, json, err := s.actions.buildSessionRepresentation(user, sessionUUID, request.ScopeGroupings)
 	if err != nil {
 		tx.Rollback()
 		panic(err)
 	}
 
-	session, err := s.actions.buildSession(tx, sessionUUID, user.uuid, sessionToken, furthestExpiration)
+	session, err := s.actions.buildSession(tx, sessionUUID, user.uuid, sessionToken)
 	if err != nil {
 		tx.Rollback()
 		panic(err)
@@ -87,13 +87,13 @@ func (s *GRPCServer) CreateGuestUser(_ context.Context, request *proto.CreateGue
 	user, err := s.actions.buildGuestUser(tx, request.Email)
 
 	sessionUUID := uuid.New().String()
-	sessionToken, json, furthestExpiration, err := s.actions.buildSessionRepresentation(user, sessionUUID, request.ScopeGroupings)
+	sessionToken, json, err := s.actions.buildSessionRepresentation(user, sessionUUID, request.ScopeGroupings)
 	if err != nil {
 		tx.Rollback()
 		panic(err)
 	}
 
-	session, err := s.actions.buildSession(tx, sessionUUID, user.uuid, sessionToken, furthestExpiration)
+	session, err := s.actions.buildSession(tx, sessionUUID, user.uuid, sessionToken)
 	if err != nil {
 		tx.Rollback()
 		panic(err)
@@ -169,13 +169,13 @@ func (s *GRPCServer) CreateSession(_ context.Context, request *proto.CreateSessi
 	}
 
 	sessionUUID := uuid.New().String()
-	sessionToken, json, furthestExpiration, err := s.actions.buildSessionRepresentation(user, sessionUUID, request.ScopeGroupings)
+	sessionToken, json, err := s.actions.buildSessionRepresentation(user, sessionUUID, request.ScopeGroupings)
 	if err != nil {
 		tx.Rollback()
 		panic(err)
 	}
 
-	session, err := s.actions.buildSession(tx, sessionUUID, user.uuid, sessionToken, furthestExpiration)
+	session, err := s.actions.buildSession(tx, sessionUUID, user.uuid, sessionToken)
 	if err != nil {
 		tx.Rollback()
 		panic(err)

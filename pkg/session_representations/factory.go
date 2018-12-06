@@ -9,8 +9,8 @@ import (
 
 type Factory struct {
 	Version        int                          `json:"version"`
-	CustomerUUID   string                       `json:"customer_id"`
-	SessionUUID    string                       `json:"session_id"`
+	CustomerUUID   string                       `json:"customer_uuid"`
+	SessionUUID    string                       `json:"session_uuid"`
 	ScopeGroupings []*tokenFactoryScopeGrouping `json:"scope_groupings"`
 }
 
@@ -30,7 +30,6 @@ type tokenFactoryScopeGrouping struct {
 type Representations struct {
 	Token              string
 	Json               string
-	FurthestExpiration time.Time
 }
 
 func NewTokenFactory(userUUID string, sessionUUID string) *Factory {
@@ -57,8 +56,7 @@ func (tf *Factory) GenerateSession() (*Representations, error) {
 		return nil, err
 	}
 
-	furthestExpiration := tf.findFurthestExpiration()
-	return &Representations{Token: token, Json: jsonStr, FurthestExpiration: furthestExpiration}, nil
+	return &Representations{Token: token, Json: jsonStr}, nil
 }
 
 func (tf *Factory) generateToken() (string, error) {
@@ -79,15 +77,15 @@ func (tf *Factory) generateJSON() (string, error) {
 	return string(bs), nil
 }
 
-func (tf *Factory) findFurthestExpiration() time.Time {
-	furthest := tf.ScopeGroupings[0].Expiration
-	for _, sg := range tf.ScopeGroupings {
-		if sg.Expiration.After(furthest) {
-			furthest = sg.Expiration
-		}
-	}
-	return furthest
-}
+//func (tf *Factory) findFurthestExpiration() time.Time {
+//	furthest := tf.ScopeGroupings[0].Expiration
+//	for _, sg := range tf.ScopeGroupings {
+//		if sg.Expiration.After(furthest) {
+//			furthest = sg.Expiration
+//		}
+//	}
+//	return furthest
+//}
 
 func secret() []byte {
 	// MUST be 32 chars

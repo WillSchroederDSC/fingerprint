@@ -11,7 +11,6 @@ CREATE TABLE sessions (
                     uuid uuid NOT NULL UNIQUE PRIMARY KEY,
                     user_uuid uuid REFERENCES users(uuid) ON DELETE CASCADE NOT NULL,
                     token TEXT NOT NULL,
-                    expiration TIMESTAMPTZ NOT NULL,
                     created_at TIMESTAMPTZ NOT NULL
 
 );
