@@ -23,17 +23,17 @@ CREATE TABLE scope_groupings (
                     expiration TIMESTAMPTZ NOT NULL,
                     created_at TIMESTAMPTZ NOT NULL
 );
-CREATE TABLE password_reset_tokens (
+CREATE TABLE password_resets (
                    uuid uuid NOT NULL UNIQUE PRIMARY KEY,
                    user_uuid uuid REFERENCES users(uuid) ON DELETE CASCADE NOT NULL,
                    token TEXT NOT NULL UNIQUE,
                    expiration TIMESTAMPTZ NOT NULL,
                    created_at TIMESTAMPTZ NOT NULL
 );
-CREATE INDEX password_reset_tokens_token ON password_reset_tokens (token);
+CREATE INDEX password_resets_token ON password_resets (token);
 
 -- +migrate Down
-DROP TABLE password_reset_tokens;
+DROP TABLE password_resets;
 DROP TABLE scope_groupings;
 DROP TABLE sessions;
 DROP TABLE users;

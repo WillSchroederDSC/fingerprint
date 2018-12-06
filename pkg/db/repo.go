@@ -165,7 +165,7 @@ func (r *Repo) DeleteSessionWithToken(token string) interface{} {
 }
 
 
-func (r *Repo) CreatePasswordResetToken(userUUID string, expiration time.Time) (*PasswordResetToken, error) {
+func (r *Repo) CreatePasswordResetToken(userUUID string, expiration time.Time) (*PasswordResets, error) {
 	resetUUID := uuid.New().String()
 	newResetToken := RandomString(16)
 	sqlStatement := "INSERT INTO password_reset_tokens (Uuid, user_uuid, token, expiration, created_at) VALUES ($1, $2, $3, $4, $5)"
@@ -182,10 +182,10 @@ func (r *Repo) CreatePasswordResetToken(userUUID string, expiration time.Time) (
 	return prt, nil
 }
 
-func (r *Repo) GetPasswordResetToken(token string) (*PasswordResetToken, error) {
+func (r *Repo) GetPasswordResetToken(token string) (*PasswordResets, error) {
 	sqlStatement := "SELECT Uuid,user_uuid,token,expiration FROM password_reset_tokens WHERE token=$1"
 	row := r.Dao.Conn.QueryRow(sqlStatement, token)
-	var t PasswordResetToken
+	var t PasswordResets
 	err := row.Scan(&t.Uuid, &t.UserUuid, &t.Token, &t.Expiration)
 	if err != nil {
 		panic(err)

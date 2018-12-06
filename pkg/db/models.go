@@ -7,10 +7,10 @@ import (
 )
 
 type User struct {
-	Uuid               string
-	Email              string
-	EncryptedPassword  string
-	IsGuest            bool
+	Uuid              string
+	Email             string
+	EncryptedPassword string
+	IsGuest           bool
 }
 
 func (u *User) ConvertToProtobuff() *proto.User {
@@ -21,9 +21,9 @@ func (u *User) ConvertToProtobuff() *proto.User {
 }
 
 type Session struct {
-	Uuid       string
-	Token      string
-	UserId     int
+	Uuid   string
+	Token  string
+	UserId int
 }
 
 func (s *Session) ConvertToProtobuff(json string) *proto.Session {
@@ -35,10 +35,10 @@ func (s *Session) ConvertToProtobuff(json string) *proto.Session {
 }
 
 type ScopeGrouping struct {
-	Uuid       string
-	SessionUuid  int
-	Scopes     []string
-	Expiration time.Time
+	Uuid        string
+	SessionUuid int
+	Scopes      []string
+	Expiration  time.Time
 }
 
 func (sg *ScopeGrouping) ConvertToProtobuff() (*proto.ScopeGrouping, error) {
@@ -53,9 +53,9 @@ func (sg *ScopeGrouping) ConvertToProtobuff() (*proto.ScopeGrouping, error) {
 	}, nil
 }
 
-type PasswordResetToken struct {
+type PasswordResets struct {
 	Uuid       string
-	UserUuid     int
+	UserUuid   int
 	Token      string
 	Expiration time.Time
 }

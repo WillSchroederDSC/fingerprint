@@ -1,4 +1,3 @@
-Rename password reset tokens to password resets
 Make all queries respect expiration dates
 Correct error handling
 Quality testing setup w/ testify with db wipe
