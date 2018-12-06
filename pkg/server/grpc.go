@@ -2,6 +2,7 @@ package server
 
 import (
 	"errors"
+	"github.com/golang/protobuf/ptypes"
 	"github.com/google/uuid"
 	"github.com/willschroeder/fingerprint/pkg/db"
 	"github.com/willschroeder/fingerprint/pkg/proto"
@@ -12,11 +13,11 @@ import "context"
 type GRPCServer struct {
 	repo    *Repo
 	dao     *db.DAO
-	builder *Builder
+	actions *Actions
 }
 
 func NewGRPCServer(repo *Repo, dao *db.DAO) *GRPCServer {
-	return &GRPCServer{repo, dao, &Builder{repo: repo, dao: dao}}
+	return &GRPCServer{repo, dao, &Actions{repo: repo, dao: dao}}
 }
 
 func (s *GRPCServer) CreateUser(_ context.Context, request *proto.CreateUserRequest) (*proto.CreateUserResponse, error) {
@@ -25,26 +26,26 @@ func (s *GRPCServer) CreateUser(_ context.Context, request *proto.CreateUserRequ
 		panic(err)
 	}
 
-	user, err := s.builder.buildUser(tx, request.Email, request.Password, request.PasswordConfirmation)
+	user, err := s.actions.buildUser(tx, request.Email, request.Password, request.PasswordConfirmation)
 	if err != nil {
 		tx.Rollback()
 		panic(err)
 	}
 
 	sessionUUID := uuid.New()
-	sessionToken, json, furthestExpiration, err := s.builder.buildToken(user, sessionUUID, request.ScopeGroupings)
+	sessionToken, json, furthestExpiration, err := s.actions.buildSessionRepresentation(user, sessionUUID, request.ScopeGroupings)
 	if err != nil {
 		tx.Rollback()
 		panic(err)
 	}
 
-	session, err := s.builder.buildSession(tx, sessionUUID, user.id, sessionToken, furthestExpiration)
+	session, err := s.actions.buildSession(tx, sessionUUID, user.id, sessionToken, furthestExpiration)
 	if err != nil {
 		tx.Rollback()
 		panic(err)
 	}
 
-	_, err = s.builder.buildScopeGroupings(tx, request.ScopeGroupings, session.id)
+	_, err = s.actions.buildScopeGroupings(tx, request.ScopeGroupings, session.id)
 	if err != nil {
 		tx.Rollback()
 		panic(err)
@@ -83,22 +84,22 @@ func (s *GRPCServer) CreateGuestUser(_ context.Context, request *proto.CreateGue
 		panic(err)
 	}
 
-	user, err := s.builder.buildGuestUser(tx, request.Email)
+	user, err := s.actions.buildGuestUser(tx, request.Email)
 
 	sessionUUID := uuid.New()
-	sessionToken, json, furthestExpiration, err := s.builder.buildToken(user, sessionUUID, request.ScopeGroupings)
+	sessionToken, json, furthestExpiration, err := s.actions.buildSessionRepresentation(user, sessionUUID, request.ScopeGroupings)
 	if err != nil {
 		tx.Rollback()
 		panic(err)
 	}
 
-	session, err := s.builder.buildSession(tx, sessionUUID, user.id, sessionToken, furthestExpiration)
+	session, err := s.actions.buildSession(tx, sessionUUID, user.id, sessionToken, furthestExpiration)
 	if err != nil {
 		tx.Rollback()
 		panic(err)
 	}
 
-	_, err = s.builder.buildScopeGroupings(tx, request.ScopeGroupings, session.id)
+	_, err = s.actions.buildScopeGroupings(tx, request.ScopeGroupings, session.id)
 	if err != nil {
 		tx.Rollback()
 		panic(err)
@@ -113,17 +114,33 @@ func (s *GRPCServer) CreateGuestUser(_ context.Context, request *proto.CreateGue
 }
 
 func (s *GRPCServer) CreatePasswordResetToken(_ context.Context, request *proto.CreatePasswordResetTokenRequest) (*proto.CreatePasswordResetTokenResponse, error) {
-	//token, err := s.repo.UpdateUserPasswordResetToken(request.Email)
-	//if err != nil {
-	//	panic(err)
-	//}
-	//
-	//return &proto.CreatePasswordResetTokenResponse{PasswordResetToken:token}, nil
-	panic("soon")
+	user, err := s.repo.GetUserWithEmail(request.Email)
+	if err != nil {
+		panic(err)
+	}
+
+	err = s.repo.DeleteAllPasswordResetTokensForUser(user.id)
+	if err != nil {
+		panic(err)
+	}
+
+
+	exp, err := ptypes.Timestamp(request.Expiration)
+	if err != nil {
+		panic(err)
+	}
+
+
+	resetToken, err := s.repo.CreatePasswordResetToken(user.id,exp)
+	if err != nil {
+		panic(err)
+	}
+
+	return &proto.CreatePasswordResetTokenResponse{PasswordResetToken:resetToken.token}, nil
 }
 
 func (s *GRPCServer) UpdateUserPassword(_ context.Context, request *proto.ResetUserPasswordRequest) (*proto.ResetUserPasswordResponse, error) {
-	err := s.builder.updateUserPassword(request.Email, request.PasswordResetToken, request.Password, request.PasswordConfirmation)
+	err := s.actions.updateUserPassword(request.Email, request.PasswordResetToken, request.Password, request.PasswordConfirmation)
 	if err != nil {
 		panic(err)
 	}
@@ -152,19 +169,19 @@ func (s *GRPCServer) CreateSession(_ context.Context, request *proto.CreateSessi
 	}
 
 	sessionUUID := uuid.New()
-	sessionToken, json, furthestExpiration, err := s.builder.buildToken(user, sessionUUID, request.ScopeGroupings)
+	sessionToken, json, furthestExpiration, err := s.actions.buildSessionRepresentation(user, sessionUUID, request.ScopeGroupings)
 	if err != nil {
 		tx.Rollback()
 		panic(err)
 	}
 
-	session, err := s.builder.buildSession(tx, sessionUUID, user.id, sessionToken, furthestExpiration)
+	session, err := s.actions.buildSession(tx, sessionUUID, user.id, sessionToken, furthestExpiration)
 	if err != nil {
 		tx.Rollback()
 		panic(err)
 	}
 
-	_, err = s.builder.buildScopeGroupings(tx, request.ScopeGroupings, session.id)
+	_, err = s.actions.buildScopeGroupings(tx, request.ScopeGroupings, session.id)
 	if err != nil {
 		tx.Rollback()
 		panic(err)
@@ -189,10 +206,20 @@ func (s *GRPCServer) GetSession(_ context.Context, request *proto.GetSessionRequ
 }
 
 func (s *GRPCServer) DeleteSession(_ context.Context, request *proto.DeleteSessionRequest) (*proto.DeleteSessionResponse, error) {
-	//successful, err := s.repo.DeleteSessionWithUUID(request.Uuid)
-	//if err != nil {
-	//	panic(err)
-	//}
-	//
+	switch representation := request.Representation.(type) {
+	case *proto.DeleteSessionRequest_Uuid:
+		err := s.repo.DeleteSessionWithUUID(representation.Uuid)
+		if err != nil {
+			panic(err)
+		}
+		return &proto.DeleteSessionResponse{Successful:true}, nil
+	case *proto.DeleteSessionRequest_Token:
+		err := s.repo.DeleteSessionWithToken(representation.Token)
+		if err != nil {
+			panic(err)
+		}
+		return &proto.DeleteSessionResponse{Successful:true}, nil
+	}
+
 	return &proto.DeleteSessionResponse{Successful: false}, nil
 }

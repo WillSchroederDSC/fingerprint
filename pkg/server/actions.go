@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-type Builder struct {
+type Actions struct {
 	repo *Repo
 	dao  *db.DAO
 }
@@ -26,12 +26,21 @@ func BuildPasswordHash(password string) (string, error) {
 	return string(hash), nil
 }
 
-func (b *Builder) buildUser(tx *sql.Tx, email string, password string, passwordConfirmation string) (*User, error) {
+func confirmPasswordAndHash(password string, passwordConfirmation string) (string, error) {
 	if password != passwordConfirmation {
-		return nil, errors.New("password and confirmation don't match")
+		return "", errors.New("password and confirmation don't match")
 	}
 
 	hash, err := BuildPasswordHash(password)
+	if err != nil {
+		panic(err)
+	}
+
+	return hash, nil
+}
+
+func (b *Actions) buildUser(tx *sql.Tx, email string, password string, passwordConfirmation string) (*User, error) {
+	hash, err := confirmPasswordAndHash(password, passwordConfirmation)
 	if err != nil {
 		panic(err)
 	}
@@ -44,12 +53,13 @@ func (b *Builder) buildUser(tx *sql.Tx, email string, password string, passwordC
 	return user, nil
 }
 
-func (b *Builder) updateUserPassword(email string, passwordResetToken string, password string, passwordConfirmation string) error {
-	if password != passwordConfirmation {
-		return errors.New("password and confirmation don't match")
+func (b *Actions) updateUserPassword(email string, passwordResetToken string, password string, passwordConfirmation string) error {
+	prt, err := b.repo.GetPasswordResetToken(passwordResetToken)
+	if err != nil {
+		panic(err)
 	}
 
-	hash, err := BuildPasswordHash(password)
+	hash, err := confirmPasswordAndHash(password, passwordConfirmation)
 	if err != nil {
 		panic(err)
 	}
@@ -63,6 +73,11 @@ func (b *Builder) updateUserPassword(email string, passwordResetToken string, pa
 		return errors.New("current user reset token does not match given reset token")
 	}
 
+	err = b.repo.DeletePasswordResetToken(prt.uuid)
+	if err != nil {
+		panic(err)
+	}
+
 	err = b.repo.UpdateUserPassword(email, hash)
 	if err != nil {
 		panic(err)
@@ -71,13 +86,13 @@ func (b *Builder) updateUserPassword(email string, passwordResetToken string, pa
 	return nil
 }
 
-func (b *Builder) buildGuestUser(tx *sql.Tx, email string) (*User, error) {
-	hash, err := BuildPasswordHash("REPLACEME")
+func (b *Actions) buildGuestUser(tx *sql.Tx, email string) (*User, error) {
+	hash, err := BuildPasswordHash(db.RandomString(16))
 	if err != nil {
 		panic(err)
 	}
 
-	email = email + "." + "REPLACEME" + ".guest"
+	email = email + "." + db.RandomString(6) + ".guest"
 
 	user, err := b.repo.CreateUser(tx, email, hash, true)
 	if err != nil {
@@ -87,7 +102,7 @@ func (b *Builder) buildGuestUser(tx *sql.Tx, email string) (*User, error) {
 	return user, nil
 }
 
-func (b *Builder) buildSession(tx *sql.Tx, newSessionUUID uuid.UUID, userID int, sessionToken string, furthestExpiration time.Time) (*Session, error) {
+func (b *Actions) buildSession(tx *sql.Tx, newSessionUUID uuid.UUID, userID int, sessionToken string, furthestExpiration time.Time) (*Session, error) {
 	session, err := b.repo.CreateSession(tx, newSessionUUID, userID, sessionToken, furthestExpiration)
 	if err != nil {
 		panic(err)
@@ -96,7 +111,7 @@ func (b *Builder) buildSession(tx *sql.Tx, newSessionUUID uuid.UUID, userID int,
 	return session, nil
 }
 
-func (b *Builder) buildScopeGroupings(tx *sql.Tx, protoScopeGroupings []*proto.ScopeGrouping, sessionID int) ([]*ScopeGrouping, error) {
+func (b *Actions) buildScopeGroupings(tx *sql.Tx, protoScopeGroupings []*proto.ScopeGrouping, sessionID int) ([]*ScopeGrouping, error) {
 	scopeGroupings := make([]*ScopeGrouping, len(protoScopeGroupings))
 	for i, sg := range protoScopeGroupings {
 		exp, err := ptypes.Timestamp(sg.Expiration)
@@ -114,7 +129,7 @@ func (b *Builder) buildScopeGroupings(tx *sql.Tx, protoScopeGroupings []*proto.S
 	return scopeGroupings, nil
 }
 
-func (b *Builder) buildToken(user *User, sessionUUID uuid.UUID, protoScopeGroupings []*proto.ScopeGrouping) (tokenStr string, json string, furthestExpiration time.Time, err error) {
+func (b *Actions) buildSessionRepresentation(user *User, sessionUUID uuid.UUID, protoScopeGroupings []*proto.ScopeGrouping) (tokenStr string, json string, furthestExpiration time.Time, err error) {
 	tf := session_representations.NewTokenFactory(user.uuid, sessionUUID.String())
 	for _, sg := range protoScopeGroupings {
 		exp, err := ptypes.Timestamp(sg.Expiration)
