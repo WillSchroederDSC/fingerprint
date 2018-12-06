@@ -11,7 +11,7 @@ import (
 )
 
 type Actions struct {
-	repo *Repo
+	repo *db.Repo
 	dao  *db.DAO
 }
 
@@ -37,7 +37,7 @@ func confirmPasswordAndHash(password string, passwordConfirmation string) (strin
 	return hash, nil
 }
 
-func (b *Actions) buildUser(tx *sql.Tx, email string, password string, passwordConfirmation string) (*User, error) {
+func (b *Actions) buildUser(tx *sql.Tx, email string, password string, passwordConfirmation string) (*db.User, error) {
 	hash, err := confirmPasswordAndHash(password, passwordConfirmation)
 	if err != nil {
 		panic(err)
@@ -62,16 +62,11 @@ func (b *Actions) updateUserPassword(email string, passwordResetToken string, pa
 		panic(err)
 	}
 
-	user, err := b.repo.GetUserWithEmail(email)
-	if err != nil {
-		panic(err)
-	}
-
-	if passwordResetToken != user.passwordResetToken {
+	if passwordResetToken != prt.Token {
 		return errors.New("current user reset token does not match given reset token")
 	}
 
-	err = b.repo.DeletePasswordResetToken(prt.uuid)
+	err = b.repo.DeletePasswordResetToken(prt.Uuid)
 	if err != nil {
 		panic(err)
 	}
@@ -84,7 +79,7 @@ func (b *Actions) updateUserPassword(email string, passwordResetToken string, pa
 	return nil
 }
 
-func (b *Actions) buildGuestUser(tx *sql.Tx, email string) (*User, error) {
+func (b *Actions) buildGuestUser(tx *sql.Tx, email string) (*db.User, error) {
 	hash, err := BuildPasswordHash(db.RandomString(16))
 	if err != nil {
 		panic(err)
@@ -100,7 +95,7 @@ func (b *Actions) buildGuestUser(tx *sql.Tx, email string) (*User, error) {
 	return user, nil
 }
 
-func (b *Actions) buildSession(tx *sql.Tx, newSessionUUID string, userUUID string, sessionToken string) (*Session, error) {
+func (b *Actions) buildSession(tx *sql.Tx, newSessionUUID string, userUUID string, sessionToken string) (*db.Session, error) {
 	session, err := b.repo.CreateSession(tx, newSessionUUID, userUUID, sessionToken)
 	if err != nil {
 		panic(err)
@@ -109,8 +104,8 @@ func (b *Actions) buildSession(tx *sql.Tx, newSessionUUID string, userUUID strin
 	return session, nil
 }
 
-func (b *Actions) buildScopeGroupings(tx *sql.Tx, protoScopeGroupings []*proto.ScopeGrouping, sessionUUID string) ([]*ScopeGrouping, error) {
-	scopeGroupings := make([]*ScopeGrouping, len(protoScopeGroupings))
+func (b *Actions) buildScopeGroupings(tx *sql.Tx, protoScopeGroupings []*proto.ScopeGrouping, sessionUUID string) ([]*db.ScopeGrouping, error) {
+	scopeGroupings := make([]*db.ScopeGrouping, len(protoScopeGroupings))
 	for i, sg := range protoScopeGroupings {
 		exp, err := ptypes.Timestamp(sg.Expiration)
 		if err != nil {
@@ -127,8 +122,8 @@ func (b *Actions) buildScopeGroupings(tx *sql.Tx, protoScopeGroupings []*proto.S
 	return scopeGroupings, nil
 }
 
-func (b *Actions) buildSessionRepresentation(user *User, sessionUUID string, protoScopeGroupings []*proto.ScopeGrouping) (tokenStr string, json string, err error) {
-	tf := session_representations.NewTokenFactory(user.uuid, sessionUUID)
+func (b *Actions) buildSessionRepresentation(user *db.User, sessionUUID string, protoScopeGroupings []*proto.ScopeGrouping) (tokenStr string, json string, err error) {
+	tf := session_representations.NewTokenFactory(user.Uuid, sessionUUID)
 	for _, sg := range protoScopeGroupings {
 		exp, err := ptypes.Timestamp(sg.Expiration)
 		if err != nil {

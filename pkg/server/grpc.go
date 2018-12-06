@@ -11,12 +11,12 @@ import (
 import "context"
 
 type GRPCServer struct {
-	repo    *Repo
+	repo    *db.Repo
 	dao     *db.DAO
 	actions *Actions
 }
 
-func NewGRPCServer(repo *Repo, dao *db.DAO) *GRPCServer {
+func NewGRPCServer(repo *db.Repo, dao *db.DAO) *GRPCServer {
 	return &GRPCServer{repo, dao, &Actions{repo: repo, dao: dao}}
 }
 
@@ -39,13 +39,13 @@ func (s *GRPCServer) CreateUser(_ context.Context, request *proto.CreateUserRequ
 		panic(err)
 	}
 
-	session, err := s.actions.buildSession(tx, sessionUUID, user.uuid, sessionToken)
+	session, err := s.actions.buildSession(tx, sessionUUID, user.Uuid, sessionToken)
 	if err != nil {
 		tx.Rollback()
 		panic(err)
 	}
 
-	_, err = s.actions.buildScopeGroupings(tx, request.ScopeGroupings, session.uuid)
+	_, err = s.actions.buildScopeGroupings(tx, request.ScopeGroupings, session.Uuid)
 	if err != nil {
 		tx.Rollback()
 		panic(err)
@@ -93,13 +93,13 @@ func (s *GRPCServer) CreateGuestUser(_ context.Context, request *proto.CreateGue
 		panic(err)
 	}
 
-	session, err := s.actions.buildSession(tx, sessionUUID, user.uuid, sessionToken)
+	session, err := s.actions.buildSession(tx, sessionUUID, user.Uuid, sessionToken)
 	if err != nil {
 		tx.Rollback()
 		panic(err)
 	}
 
-	_, err = s.actions.buildScopeGroupings(tx, request.ScopeGroupings, session.uuid)
+	_, err = s.actions.buildScopeGroupings(tx, request.ScopeGroupings, session.Uuid)
 	if err != nil {
 		tx.Rollback()
 		panic(err)
@@ -119,7 +119,7 @@ func (s *GRPCServer) CreatePasswordResetToken(_ context.Context, request *proto.
 		panic(err)
 	}
 
-	err = s.repo.DeleteAllPasswordResetTokensForUser(user.uuid)
+	err = s.repo.DeleteAllPasswordResetTokensForUser(user.Uuid)
 	if err != nil {
 		panic(err)
 	}
@@ -131,12 +131,12 @@ func (s *GRPCServer) CreatePasswordResetToken(_ context.Context, request *proto.
 	}
 
 
-	resetToken, err := s.repo.CreatePasswordResetToken(user.uuid,exp)
+	resetToken, err := s.repo.CreatePasswordResetToken(user.Uuid,exp)
 	if err != nil {
 		panic(err)
 	}
 
-	return &proto.CreatePasswordResetTokenResponse{PasswordResetToken:resetToken.token}, nil
+	return &proto.CreatePasswordResetTokenResponse{PasswordResetToken:resetToken.Token}, nil
 }
 
 func (s *GRPCServer) UpdateUserPassword(_ context.Context, request *proto.ResetUserPasswordRequest) (*proto.ResetUserPasswordResponse, error) {
@@ -159,7 +159,7 @@ func (s *GRPCServer) CreateSession(_ context.Context, request *proto.CreateSessi
 		panic(err)
 	}
 
-	if hash != user.encryptedPassword {
+	if hash != user.EncryptedPassword {
 		return nil, errors.New("incorrect password")
 	}
 
@@ -175,13 +175,13 @@ func (s *GRPCServer) CreateSession(_ context.Context, request *proto.CreateSessi
 		panic(err)
 	}
 
-	session, err := s.actions.buildSession(tx, sessionUUID, user.uuid, sessionToken)
+	session, err := s.actions.buildSession(tx, sessionUUID, user.Uuid, sessionToken)
 	if err != nil {
 		tx.Rollback()
 		panic(err)
 	}
 
-	_, err = s.actions.buildScopeGroupings(tx, request.ScopeGroupings, session.uuid)
+	_, err = s.actions.buildScopeGroupings(tx, request.ScopeGroupings, session.Uuid)
 	if err != nil {
 		tx.Rollback()
 		panic(err)
@@ -191,7 +191,7 @@ func (s *GRPCServer) CreateSession(_ context.Context, request *proto.CreateSessi
 	if err != nil {
 		panic(err)
 	}
-	return &proto.CreateSessionResponse{Session: &proto.Session{Uuid: session.uuid, Token: sessionToken, Json: json}}, nil
+	return &proto.CreateSessionResponse{Session: &proto.Session{Uuid: session.Uuid, Token: sessionToken, Json: json}}, nil
 }
 
 func (s *GRPCServer) GetSession(_ context.Context, request *proto.GetSessionRequest) (*proto.GetSessionResponse, error) {
@@ -200,9 +200,9 @@ func (s *GRPCServer) GetSession(_ context.Context, request *proto.GetSessionRequ
 		panic(err)
 	}
 
-	json := session_representations.DecodeTokenToJson(session.token)
+	json := session_representations.DecodeTokenToJson(session.Token)
 
-	return &proto.GetSessionResponse{Session: &proto.Session{Uuid: session.uuid, Token: session.token, Json: json}}, nil
+	return &proto.GetSessionResponse{Session: &proto.Session{Uuid: session.Uuid, Token: session.Token, Json: json}}, nil
 }
 
 func (s *GRPCServer) DeleteSession(_ context.Context, request *proto.DeleteSessionRequest) (*proto.DeleteSessionResponse, error) {

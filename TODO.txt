@@ -1,5 +1,5 @@
+Rename password reset tokens to password resets
 Make all queries respect expiration dates
-Move repo to DB
 Correct error handling
 Quality testing setup w/ testify with db wipe
 Make sure that certain commands cant be executed on guest users

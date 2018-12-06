@@ -1,4 +1,4 @@
-package server
+package db
 
 import (
 	"github.com/golang/protobuf/ptypes"
@@ -7,57 +7,55 @@ import (
 )
 
 type User struct {
-	uuid               string
-	email              string
-	encryptedPassword  string
-	isGuest            bool
-	passwordResetToken string
+	Uuid               string
+	Email              string
+	EncryptedPassword  string
+	IsGuest            bool
 }
 
 func (u *User) ConvertToProtobuff() *proto.User {
 	return &proto.User{
-		Uuid:  u.uuid,
-		Email: u.email,
+		Uuid:  u.Uuid,
+		Email: u.Email,
 	}
 }
 
 type Session struct {
-	uuid       string
-	token      string
-	userId     int
-	expiration time.Time
+	Uuid       string
+	Token      string
+	UserId     int
 }
 
 func (s *Session) ConvertToProtobuff(json string) *proto.Session {
 	return &proto.Session{
-		Uuid:  s.uuid,
-		Token: s.token,
+		Uuid:  s.Uuid,
+		Token: s.Token,
 		Json:  json,
 	}
 }
 
 type ScopeGrouping struct {
-	uuid       string
-	sessionId  int
-	scopes     []string
-	expiration time.Time
+	Uuid       string
+	SessionUuid  int
+	Scopes     []string
+	Expiration time.Time
 }
 
 func (sg *ScopeGrouping) ConvertToProtobuff() (*proto.ScopeGrouping, error) {
-	timestamp, err := ptypes.TimestampProto(sg.expiration)
+	timestamp, err := ptypes.TimestampProto(sg.Expiration)
 	if err != nil {
 		return nil, err
 	}
 
 	return &proto.ScopeGrouping{
-		Scopes:     sg.scopes,
+		Scopes:     sg.Scopes,
 		Expiration: timestamp,
 	}, nil
 }
 
 type PasswordResetToken struct {
-	uuid       string
-	userId     int
-	token      string
-	expiration time.Time
+	Uuid       string
+	UserUuid     int
+	Token      string
+	Expiration time.Time
 }
