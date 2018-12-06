@@ -7,7 +7,6 @@ import (
 )
 
 type User struct {
-	id                 int
 	uuid               string
 	email              string
 	encryptedPassword  string
@@ -23,7 +22,6 @@ func (u *User) ConvertToProtobuff() *proto.User {
 }
 
 type Session struct {
-	id         int
 	uuid       string
 	token      string
 	userId     int
@@ -39,7 +37,6 @@ func (s *Session) ConvertToProtobuff(json string) *proto.Session {
 }
 
 type ScopeGrouping struct {
-	id         int
 	uuid       string
 	sessionId  int
 	scopes     []string

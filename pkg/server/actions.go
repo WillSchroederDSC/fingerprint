@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"errors"
 	"github.com/golang/protobuf/ptypes"
-	"github.com/google/uuid"
 	"github.com/willschroeder/fingerprint/pkg/db"
 	"github.com/willschroeder/fingerprint/pkg/proto"
 	"github.com/willschroeder/fingerprint/pkg/session_representations"
@@ -102,8 +101,8 @@ func (b *Actions) buildGuestUser(tx *sql.Tx, email string) (*User, error) {
 	return user, nil
 }
 
-func (b *Actions) buildSession(tx *sql.Tx, newSessionUUID uuid.UUID, userID int, sessionToken string, furthestExpiration time.Time) (*Session, error) {
-	session, err := b.repo.CreateSession(tx, newSessionUUID, userID, sessionToken, furthestExpiration)
+func (b *Actions) buildSession(tx *sql.Tx, newSessionUUID string, userUUID string, sessionToken string, furthestExpiration time.Time) (*Session, error) {
+	session, err := b.repo.CreateSession(tx, newSessionUUID, userUUID, sessionToken, furthestExpiration)
 	if err != nil {
 		panic(err)
 	}
@@ -111,7 +110,7 @@ func (b *Actions) buildSession(tx *sql.Tx, newSessionUUID uuid.UUID, userID int,
 	return session, nil
 }
 
-func (b *Actions) buildScopeGroupings(tx *sql.Tx, protoScopeGroupings []*proto.ScopeGrouping, sessionID int) ([]*ScopeGrouping, error) {
+func (b *Actions) buildScopeGroupings(tx *sql.Tx, protoScopeGroupings []*proto.ScopeGrouping, sessionUUID string) ([]*ScopeGrouping, error) {
 	scopeGroupings := make([]*ScopeGrouping, len(protoScopeGroupings))
 	for i, sg := range protoScopeGroupings {
 		exp, err := ptypes.Timestamp(sg.Expiration)
@@ -119,7 +118,7 @@ func (b *Actions) buildScopeGroupings(tx *sql.Tx, protoScopeGroupings []*proto.S
 			panic(err)
 		}
 
-		scopeGrouping, err := b.repo.CreateScopeGrouping(tx, sessionID, sg.Scopes, exp)
+		scopeGrouping, err := b.repo.CreateScopeGrouping(tx, sessionUUID, sg.Scopes, exp)
 		if err != nil {
 			panic(err)
 		}
@@ -129,8 +128,8 @@ func (b *Actions) buildScopeGroupings(tx *sql.Tx, protoScopeGroupings []*proto.S
 	return scopeGroupings, nil
 }
 
-func (b *Actions) buildSessionRepresentation(user *User, sessionUUID uuid.UUID, protoScopeGroupings []*proto.ScopeGrouping) (tokenStr string, json string, furthestExpiration time.Time, err error) {
-	tf := session_representations.NewTokenFactory(user.uuid, sessionUUID.String())
+func (b *Actions) buildSessionRepresentation(user *User, sessionUUID string, protoScopeGroupings []*proto.ScopeGrouping) (tokenStr string, json string, furthestExpiration time.Time, err error) {
+	tf := session_representations.NewTokenFactory(user.uuid, sessionUUID)
 	for _, sg := range protoScopeGroupings {
 		exp, err := ptypes.Timestamp(sg.Expiration)
 		if err != nil {
