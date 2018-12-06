@@ -2,7 +2,7 @@ package session_representations
 
 import (
 	"encoding/json"
-	"errors"
+	"github.com/pkg/errors"
 	"github.com/o1egl/paseto"
 	"time"
 )
@@ -28,8 +28,8 @@ type tokenFactoryScopeGrouping struct {
 }
 
 type Representations struct {
-	Token              string
-	Json               string
+	Token string
+	Json  string
 }
 
 func NewTokenFactory(userUUID string, sessionUUID string) *Factory {
@@ -63,7 +63,7 @@ func (tf *Factory) generateToken() (string, error) {
 	v2 := paseto.NewV2()
 	token, err := v2.Encrypt(secret(), tf, "")
 	if err != nil {
-		panic(err)
+		return "", errors.Wrap(err, "failed to generate paseto token")
 	}
 
 	return token, nil
@@ -72,7 +72,7 @@ func (tf *Factory) generateToken() (string, error) {
 func (tf *Factory) generateJSON() (string, error) {
 	bs, err := json.Marshal(tf)
 	if err != nil {
-		panic(err)
+		return "", errors.Wrap(err, "failed to generate json")
 	}
 	return string(bs), nil
 }
@@ -89,16 +89,17 @@ func (tf *Factory) generateJSON() (string, error) {
 
 func secret() []byte {
 	// MUST be 32 chars
+	// TODO: Make this configurable
 	return []byte("YELLOW SUBMARINE, BLACK WIZARDRY")
 }
 
-func DecodeTokenToJson(sessionToken string) string {
+func DecodeTokenToJson(sessionToken string) (string, error) {
 	v2 := paseto.NewV2()
 	var token string
 	var footer string
 	err := v2.Decrypt(sessionToken, secret(), &token, &footer)
 	if err != nil {
-		panic(err)
+		return "", errors.Wrap(err, "failed to decrypt paseto token")
 	}
-	return token
+	return token, nil
 }

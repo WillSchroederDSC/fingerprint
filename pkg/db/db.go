@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	_ "github.com/lib/pq"
+	"log"
 )
 
 const (
@@ -25,13 +26,13 @@ func ConnectToDatabase() *DAO {
 
 	conn, err := sql.Open("postgres", psqlInfo)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 
 	// Ensures Conn
 	err = conn.Ping()
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 	return &DAO{Conn: conn}
 }

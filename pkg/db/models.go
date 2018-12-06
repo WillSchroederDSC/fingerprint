@@ -2,6 +2,7 @@ package db
 
 import (
 	"github.com/golang/protobuf/ptypes"
+	"github.com/pkg/errors"
 	"github.com/willschroeder/fingerprint/pkg/proto"
 	"time"
 )
@@ -44,7 +45,7 @@ type ScopeGrouping struct {
 func (sg *ScopeGrouping) ConvertToProtobuff() (*proto.ScopeGrouping, error) {
 	timestamp, err := ptypes.TimestampProto(sg.Expiration)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to decode time")
 	}
 
 	return &proto.ScopeGrouping{

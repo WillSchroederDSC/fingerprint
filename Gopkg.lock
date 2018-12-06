@@ -216,21 +216,6 @@
   version = "v1.2.1"
 
 [[projects]]
-  digest = "1:75d447ee7c6dfa97f31adfb4f03ce64edfbac3b5b92cebaee708c590d7069ee8"
-  name = "github.com/thanhpk/baseconv"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "ecdb2bce436580b7af32bd93f569dddadf3a0d4c"
-
-[[projects]]
-  digest = "1:a969535cd4d6de7d9a37be26016474318cfd13ac5ee99e9ca3df0f3230fc6d87"
-  name = "github.com/thanhpk/randstr"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "5d341746266631ff6a4bae01c59d360b803140c4"
-  version = "v1.0.2"
-
-[[projects]]
   branch = "master"
   digest = "1:cfdc23bb070c546fd5751b8847786f1275aa328a8990fd821dc71308aab0d71e"
   name = "golang.org/x/crypto"
@@ -371,7 +356,6 @@
     "github.com/rubenv/sql-migrate",
     "github.com/spf13/cobra",
     "github.com/spf13/viper",
-    "github.com/thanhpk/randstr",
     "golang.org/x/crypto/bcrypt",
     "google.golang.org/grpc",
     "google.golang.org/grpc/reflection",

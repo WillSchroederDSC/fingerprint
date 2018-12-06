@@ -1,12 +1,14 @@
 package server
 
 import (
-	"errors"
+	"fmt"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/google/uuid"
+	"github.com/pkg/errors"
 	"github.com/willschroeder/fingerprint/pkg/db"
 	"github.com/willschroeder/fingerprint/pkg/proto"
 	"github.com/willschroeder/fingerprint/pkg/session_representations"
+
 )
 import "context"
 
@@ -16,14 +18,15 @@ type GRPCServer struct {
 	actions *Actions
 }
 
-func NewGRPCServer(repo *db.Repo, dao *db.DAO) *GRPCServer {
-	return &GRPCServer{repo, dao, &Actions{repo: repo, dao: dao}}
+func NewGRPCServer(dao *db.DAO) *GRPCServer {
+	return &GRPCServer{db.NewRepo(dao), dao, NewActions(dao)}
 }
 
 func (s *GRPCServer) CreateUser(_ context.Context, request *proto.CreateUserRequest) (*proto.CreateUserResponse, error) {
 	tx, err := s.dao.Conn.Begin()
 	if err != nil {
-		panic(err)
+		fmt.Printf("FATAL: %+v\n", err)
+		return nil, errors.Cause(err)
 	}
 
 	user, err := s.actions.buildUser(tx, request.Email, request.Password, request.PasswordConfirmation)
@@ -124,19 +127,17 @@ func (s *GRPCServer) CreatePasswordResetToken(_ context.Context, request *proto.
 		panic(err)
 	}
 
-
 	exp, err := ptypes.Timestamp(request.Expiration)
 	if err != nil {
 		panic(err)
 	}
 
-
-	resetToken, err := s.repo.CreatePasswordResetToken(user.Uuid,exp)
+	resetToken, err := s.repo.CreatePasswordResetToken(user.Uuid, exp)
 	if err != nil {
 		panic(err)
 	}
 
-	return &proto.CreatePasswordResetTokenResponse{PasswordResetToken:resetToken.Token}, nil
+	return &proto.CreatePasswordResetTokenResponse{PasswordResetToken: resetToken.Token}, nil
 }
 
 func (s *GRPCServer) UpdateUserPassword(_ context.Context, request *proto.ResetUserPasswordRequest) (*proto.ResetUserPasswordResponse, error) {
@@ -200,7 +201,11 @@ func (s *GRPCServer) GetSession(_ context.Context, request *proto.GetSessionRequ
 		panic(err)
 	}
 
-	json := session_representations.DecodeTokenToJson(session.Token)
+	json, err := session_representations.DecodeTokenToJson(session.Token)
+	if err != nil {
+		panic(err)
+	}
+
 
 	return &proto.GetSessionResponse{Session: &proto.Session{Uuid: session.Uuid, Token: session.Token, Json: json}}, nil
 }
@@ -212,13 +217,13 @@ func (s *GRPCServer) DeleteSession(_ context.Context, request *proto.DeleteSessi
 		if err != nil {
 			panic(err)
 		}
-		return &proto.DeleteSessionResponse{Successful:true}, nil
+		return &proto.DeleteSessionResponse{Successful: true}, nil
 	case *proto.DeleteSessionRequest_Token:
 		err := s.repo.DeleteSessionWithToken(representation.Token)
 		if err != nil {
 			panic(err)
 		}
-		return &proto.DeleteSessionResponse{Successful:true}, nil
+		return &proto.DeleteSessionResponse{Successful: true}, nil
 	}
 
 	return &proto.DeleteSessionResponse{Successful: false}, nil

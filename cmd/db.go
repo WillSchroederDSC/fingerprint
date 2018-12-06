@@ -19,6 +19,7 @@ import (
 	_ "github.com/lib/pq"
 	"github.com/rubenv/sql-migrate"
 	"github.com/willschroeder/fingerprint/pkg/db"
+	"log"
 	"path/filepath"
 
 	"github.com/spf13/cobra"
@@ -48,7 +49,7 @@ var migrateCmd = &cobra.Command{
 
 		n, err := migrate.Exec(db.Conn, "postgres", migrations, migrate.Up)
 		if err != nil {
-			panic(err)
+			log.Fatal(err)
 		}
 		fmt.Printf("Applied %d migrations\n", n)
 	},
@@ -69,7 +70,7 @@ var rollbackCmd = &cobra.Command{
 
 		n, err := migrate.Exec(db.Conn, "postgres", migrations, migrate.Down)
 		if err != nil {
-			panic(err)
+			log.Fatal(err)
 		}
 		fmt.Printf("Rolled back %d migrations\n", n)
 	},
