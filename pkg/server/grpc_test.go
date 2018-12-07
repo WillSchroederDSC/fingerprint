@@ -19,7 +19,7 @@ var testServer *GRPCServer
 func TestMain(m *testing.M) {
 	gofakeit.Seed(0)
 	testDAO = db.ConnectToDatabase()
-	defer testDAO.Conn.Close()
+	defer testDAO.DB.Close()
 	testRepo = &db.Repo{Dao: testDAO}
 	testServer = NewGRPCServer(testRepo, testDAO)
 	code := m.Run()
@@ -33,7 +33,7 @@ func createEncryptedPassword() string {
 }
 
 func createTestUser(isGuest bool) *db.User {
-	tx, _ := testDAO.Conn.Begin()
+	tx, _ := testDAO.DB.Begin()
 	user, _ := testRepo.CreateUser(tx, gofakeit.Email(), createEncryptedPassword(), isGuest)
 	tx.Commit()
 	return user

@@ -60,3 +60,8 @@ type PasswordResets struct {
 	Token      string
 	Expiration time.Time
 }
+
+type SessionRepresentation struct {
+	Token string
+	Json  string
+}

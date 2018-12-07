@@ -6,6 +6,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/willschroeder/fingerprint/pkg/db"
+	"github.com/willschroeder/fingerprint/pkg/db/services"
 	"github.com/willschroeder/fingerprint/pkg/proto"
 	"github.com/willschroeder/fingerprint/pkg/session_representations"
 
@@ -13,53 +14,23 @@ import (
 import "context"
 
 type GRPCServer struct {
-	repo    *db.Repo
 	dao     *db.DAO
-	actions *Actions
 }
 
 func NewGRPCServer(dao *db.DAO) *GRPCServer {
-	return &GRPCServer{db.NewRepo(dao), dao, NewActions(dao)}
+	return &GRPCServer{dao: dao}
 }
 
 func (s *GRPCServer) CreateUser(_ context.Context, request *proto.CreateUserRequest) (*proto.CreateUserResponse, error) {
-	tx, err := s.dao.Conn.Begin()
+	usersService := services.NewUserService(s.dao)
+
+	user, session, representation, err := usersService.CreateUser(request)
 	if err != nil {
 		fmt.Printf("FATAL: %+v\n", err)
 		return nil, errors.Cause(err)
 	}
 
-	user, err := s.actions.buildUser(tx, request.Email, request.Password, request.PasswordConfirmation)
-	if err != nil {
-		tx.Rollback()
-		panic(err)
-	}
-
-	sessionUUID := uuid.New().String()
-	sessionToken, json, err := s.actions.buildSessionRepresentation(user, sessionUUID, request.ScopeGroupings)
-	if err != nil {
-		tx.Rollback()
-		panic(err)
-	}
-
-	session, err := s.actions.buildSession(tx, sessionUUID, user.Uuid, sessionToken)
-	if err != nil {
-		tx.Rollback()
-		panic(err)
-	}
-
-	_, err = s.actions.buildScopeGroupings(tx, request.ScopeGroupings, session.Uuid)
-	if err != nil {
-		tx.Rollback()
-		panic(err)
-	}
-
-	err = tx.Commit()
-	if err != nil {
-		panic(err)
-	}
-
-	return &proto.CreateUserResponse{User: user.ConvertToProtobuff(), Session: session.ConvertToProtobuff(json)}, nil
+	return &proto.CreateUserResponse{User: user.ConvertToProtobuff(), Session: session.ConvertToProtobuff(representation.Json)}, nil
 }
 
 func (s *GRPCServer) GetUser(_ context.Context, request *proto.GetUserRequest) (*proto.GetUserResponse, error) {
@@ -82,7 +53,7 @@ func (s *GRPCServer) GetUser(_ context.Context, request *proto.GetUserRequest) (
 }
 
 func (s *GRPCServer) CreateGuestUser(_ context.Context, request *proto.CreateGuestUserRequest) (*proto.CreateGuestUserResponse, error) {
-	tx, err := s.dao.Conn.Begin()
+	tx, err := s.dao.DB.Begin()
 	if err != nil {
 		panic(err)
 	}
@@ -164,7 +135,7 @@ func (s *GRPCServer) CreateSession(_ context.Context, request *proto.CreateSessi
 		return nil, errors.New("incorrect password")
 	}
 
-	tx, err := s.dao.Conn.Begin()
+	tx, err := s.dao.DB.Begin()
 	if err != nil {
 		panic(err)
 	}

@@ -11,32 +11,45 @@ import (
 )
 
 type Repo struct {
-	Dao *DAO // Change to just the connection
-	//tx *sql.Tx
+	db *sql.DB
+	tx *sql.Tx
 }
 
-func NewRepo(dao *DAO) *Repo {
-	return &Repo{Dao:dao}
+func NewRepo(db *sql.DB) *Repo {
+	return &Repo{db: db}
 }
 
-//func (r *Repo) exec(query string) (sql.Result, error)  {
-//	if r.tx != nil {
-//		return r.tx.Exec(query)
-//	}
-//
-//	return r.Dao.Conn.Exec(query)
-//}
+func NewRepoUsingTransaction(tx *sql.Tx) *Repo {
+	return &Repo{tx: tx}
+}
 
-func (r *Repo) CreateUser(tx *sql.Tx, email string, encryptedPassword string, isGuest bool) (*models.User, error) {
+
+func (r *Repo) exec(query string, args ...interface{}) (sql.Result, error) {
+	if r.tx != nil {
+		return r.tx.Exec(query)
+	}
+
+	return r.db.Exec(query)
+}
+
+func (r *Repo) queryRow(query string, args ...interface{}) *sql.Row {
+	if r.tx != nil {
+		return r.tx.QueryRow(query)
+	}
+
+	return r.db.QueryRow(query)
+}
+
+func (r *Repo) CreateUser(email string, encryptedPassword string, isGuest bool) (*models.User, error) {
 	userUUID := uuid.New().String()
 
 	sqlStatement := "INSERT INTO users (Uuid, email, encrypted_password, is_guest, updated_at, created_at) VALUES ($1, $2, $3, $4, $5, $6)"
-	_, err := tx.Exec(sqlStatement, userUUID, email, encryptedPassword, isGuest, time.Now().UTC(), time.Now().UTC())
+	_, err := r.exec(sqlStatement, userUUID, email, encryptedPassword, isGuest, time.Now().UTC(), time.Now().UTC())
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create new user")
 	}
 
-	user, err := r.GetUserWithUUIDUsingTx(tx, userUUID)
+	user, err := r.GetUserWithUUID(userUUID)
 	if err != nil {
 		return nil, err
 	}
@@ -47,7 +60,7 @@ func (r *Repo) CreateUser(tx *sql.Tx, email string, encryptedPassword string, is
 func (r *Repo) GetUserWithUUID(userUUID string) (*models.User, error) {
 	sqlStatement := "SELECT Uuid,email,encrypted_password,is_guest FROM users WHERE Uuid=$1"
 
-	row := r.Dao.Conn.QueryRow(sqlStatement, userUUID)
+	row := r.queryRow(sqlStatement, userUUID)
 	var user models.User
 	err := row.Scan(&user.Uuid, &user.Email, &user.EncryptedPassword, &user.IsGuest)
 	if err != nil {
@@ -59,7 +72,7 @@ func (r *Repo) GetUserWithUUID(userUUID string) (*models.User, error) {
 
 func (r *Repo) UpdateUserPassword(email string, encryptedPassword string) error {
 	sqlStatement := "UPDATE users SET encrypted_password=$1,updated_at=$2 WHERE email=$3"
-	_, err := r.Dao.Conn.Exec(sqlStatement, encryptedPassword, time.Now().UTC(), email)
+	_, err := r.exec(sqlStatement, encryptedPassword, time.Now().UTC(), email)
 	if err != nil {
 		return errors.Wrap(err, "failed to update users password")
 	}
@@ -70,7 +83,7 @@ func (r *Repo) UpdateUserPassword(email string, encryptedPassword string) error 
 func (r *Repo) GetUserWithEmail(email string) (*models.User, error) {
 	sqlStatement := "SELECT Uuid,email,encrypted_password,is_guest FROM users WHERE email=$1"
 
-	row := r.Dao.Conn.QueryRow(sqlStatement, email)
+	row := r.queryRow(sqlStatement, email)
 	var user models.User
 	err := row.Scan(&user.Uuid, &user.Email, &user.EncryptedPassword, &user.IsGuest)
 	if err != nil {
@@ -80,27 +93,16 @@ func (r *Repo) GetUserWithEmail(email string) (*models.User, error) {
 	return &user, nil
 }
 
-func (r *Repo) GetUserWithUUIDUsingTx(tx *sql.Tx, userUUID string) (*models.User, error) {
-	sqlStatement := "SELECT Uuid,email,encrypted_password,is_guest FROM users WHERE Uuid=$1"
+func (r *Repo) CreateSession(userUUID string) (*models.Session, error) {
+	sessionUUID := uuid.New().String()
 
-	row := tx.QueryRow(sqlStatement, userUUID)
-	var user models.User
-	err := row.Scan(&user.Uuid, &user.Email, &user.EncryptedPassword, &user.IsGuest)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to get user")
-	}
-
-	return &user, nil
-}
-
-func (r *Repo) CreateSession(tx *sql.Tx, newSessionUUID string, userUUID string, token string) (*models.Session, error) {
 	sqlStatement := "INSERT INTO sessions (Uuid, user_uuid, token, created_at) VALUES ($1, $2, $3, $4)"
-	_, err := tx.Exec(sqlStatement, newSessionUUID, userUUID, token, time.Now().UTC())
+	_, err := r.exec(sqlStatement, sessionUUID, userUUID, "TEMP", time.Now().UTC())
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create session")
 	}
 
-	session, err := r.GetSessionWithUUIDUsingTx(tx, newSessionUUID)
+	session, err := r.GetSessionWithUUID(sessionUUID)
 	if err != nil {
 		return nil, err
 	}
@@ -108,10 +110,10 @@ func (r *Repo) CreateSession(tx *sql.Tx, newSessionUUID string, userUUID string,
 	return session, nil
 }
 
-func (r *Repo) GetSessionWithUUIDUsingTx(tx *sql.Tx, sessionUUID string) (*models.Session, error) {
+func (r *Repo) GetSessionWithUUID(sessionUUID string) (*models.Session, error) {
 	sqlStatement := "SELECT Uuid,token FROM sessions WHERE Uuid=$1"
 
-	row := tx.QueryRow(sqlStatement, sessionUUID)
+	row := r.queryRow(sqlStatement, sessionUUID)
 	var session models.Session
 	err := row.Scan(&session.Uuid, &session.Token)
 	if err != nil {
@@ -124,7 +126,7 @@ func (r *Repo) GetSessionWithUUIDUsingTx(tx *sql.Tx, sessionUUID string) (*model
 func (r *Repo) GetSessionWithToken(token string) (*models.Session, error) {
 	sqlStatement := "SELECT Uuid,token FROM sessions WHERE token=$1"
 
-	row := r.Dao.Conn.QueryRow(sqlStatement, token)
+	row := r.queryRow(sqlStatement, token)
 	var session models.Session
 	err := row.Scan(&session.Uuid, &session.Token)
 	if err != nil {
@@ -134,16 +136,16 @@ func (r *Repo) GetSessionWithToken(token string) (*models.Session, error) {
 	return &session, nil
 }
 
-func (r *Repo) CreateScopeGrouping(tx *sql.Tx, sessionUUID string, scopes []string, expiration time.Time) (*models.ScopeGrouping, error) {
+func (r *Repo) CreateScopeGrouping(sessionUUID string, scopes []string, expiration time.Time) (*models.ScopeGrouping, error) {
 	groupingUUID := uuid.New().String()
 
 	sqlStatement := "INSERT INTO scope_groupings (Uuid, session_uuid, scopes, expiration, created_at) VALUES ($1, $2, $3, $4, $5)"
-	_, err := tx.Exec(sqlStatement, groupingUUID, sessionUUID, pq.Array(scopes), expiration, time.Now().UTC())
+	_, err := r.exec(sqlStatement, groupingUUID, sessionUUID, pq.Array(scopes), expiration, time.Now().UTC())
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create scope grouping")
 	}
 
-	grouping, err := r.GetScopeGroupingWithUUID(tx, groupingUUID)
+	grouping, err := r.GetScopeGroupingWithUUID(groupingUUID)
 	if err != nil {
 		return nil, err
 	}
@@ -151,9 +153,9 @@ func (r *Repo) CreateScopeGrouping(tx *sql.Tx, sessionUUID string, scopes []stri
 	return grouping, nil
 }
 
-func (r *Repo) GetScopeGroupingWithUUID(tx *sql.Tx, groupingUUID string) (*models.ScopeGrouping, error) {
+func (r *Repo) GetScopeGroupingWithUUID(groupingUUID string) (*models.ScopeGrouping, error) {
 	sqlStatement := "SELECT Uuid,scopes,expiration FROM scope_groupings WHERE Uuid=$1"
-	row := tx.QueryRow(sqlStatement, groupingUUID)
+	row := r.queryRow(sqlStatement, groupingUUID)
 	var sg models.ScopeGrouping
 	err := row.Scan(&sg.Uuid, pq.Array(&sg.Scopes), &sg.Expiration)
 	if err != nil {
@@ -163,9 +165,20 @@ func (r *Repo) GetScopeGroupingWithUUID(tx *sql.Tx, groupingUUID string) (*model
 	return &sg, nil
 }
 
+func (r *Repo) UpdateSessionToken(sessionUUID string, token string) error {
+	sqlStatement := "UPDATE sessions SET token=$1 WHERE uuid=$2"
+
+	_, err := r.exec(sqlStatement, token, sessionUUID)
+	if err != nil {
+		return errors.Wrap(err, "failed to update session token")
+	}
+
+	return nil
+}
+
 func (r *Repo) DeleteSessionWithUUID(sessionUUID string) error {
 	sqlStatement := "DELETE FROM sessions WHERE Uuid=$1"
-	_, err := r.Dao.Conn.Exec(sqlStatement, sessionUUID)
+	_, err := r.exec(sqlStatement, sessionUUID)
 	if err != nil {
 		return errors.Wrap(err, "failed to delete session")
 	}
@@ -174,7 +187,7 @@ func (r *Repo) DeleteSessionWithUUID(sessionUUID string) error {
 
 func (r *Repo) DeleteSessionWithToken(token string) interface{} {
 	sqlStatement := "DELETE FROM sessions WHERE token=$1"
-	_, err := r.Dao.Conn.Exec(sqlStatement, token)
+	_, err := r.exec(sqlStatement, token)
 	if err != nil {
 		return errors.Wrap(err, "failed to delete session")
 	}
@@ -185,7 +198,7 @@ func (r *Repo) CreatePasswordResetToken(userUUID string, expiration time.Time) (
 	resetUUID := uuid.New().String()
 	newResetToken := random.String(16)
 	sqlStatement := "INSERT INTO password_resets (Uuid, user_uuid, token, expiration, created_at) VALUES ($1, $2, $3, $4, $5)"
-	_, err := r.Dao.Conn.Exec(sqlStatement, resetUUID, userUUID, newResetToken, expiration, time.Now().UTC())
+	_, err := r.exec(sqlStatement, resetUUID, userUUID, newResetToken, expiration, time.Now().UTC())
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create password reset")
 	}
@@ -200,7 +213,7 @@ func (r *Repo) CreatePasswordResetToken(userUUID string, expiration time.Time) (
 
 func (r *Repo) GetPasswordResetToken(token string) (*models.PasswordResets, error) {
 	sqlStatement := "SELECT Uuid,user_uuid,token,expiration FROM password_resets WHERE token=$1"
-	row := r.Dao.Conn.QueryRow(sqlStatement, token)
+	row := r.queryRow(sqlStatement, token)
 	var t models.PasswordResets
 	err := row.Scan(&t.Uuid, &t.UserUuid, &t.Token, &t.Expiration)
 	if err != nil {
@@ -212,7 +225,7 @@ func (r *Repo) GetPasswordResetToken(token string) (*models.PasswordResets, erro
 
 func (r *Repo) DeletePasswordResetToken(resetUUID string) error {
 	sqlStatement := "DELETE FROM password_resets WHERE Uuid=$1"
-	_, err := r.Dao.Conn.Exec(sqlStatement, resetUUID)
+	_, err := r.exec(sqlStatement, resetUUID)
 	if err != nil {
 		return errors.Wrap(err, "failed to delete password reset")
 	}
@@ -222,7 +235,7 @@ func (r *Repo) DeletePasswordResetToken(resetUUID string) error {
 
 func (r *Repo) DeleteAllPasswordResetTokensForUser(userUUID string) error {
 	sqlStatement := "DELETE FROM password_reset_tokens WHERE user_uuid=$1"
-	_, err := r.Dao.Conn.Exec(sqlStatement, userUUID)
+	_, err := r.exec(sqlStatement, userUUID)
 	if err != nil {
 		return errors.Wrap(err, "failed to delete password reset")
 	}

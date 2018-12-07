@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	_ "github.com/lib/pq"
+	"github.com/pkg/errors"
 	"log"
 )
 
@@ -16,7 +17,16 @@ const (
 )
 
 type DAO struct {
-	Conn *sql.DB
+	DB *sql.DB
+}
+
+func (dao *DAO) NewTransaction() (*sql.Tx, error) {
+	tx, err := dao.DB.Begin()
+	if err != nil {
+		return nil, errors.Wrap(err, "couldn't build transaction")
+	}
+
+	return tx, nil
 }
 
 func ConnectToDatabase() *DAO {
@@ -29,12 +39,12 @@ func ConnectToDatabase() *DAO {
 		log.Fatal(err)
 	}
 
-	// Ensures Conn
+	// Ensures DB
 	err = conn.Ping()
 	if err != nil {
 		log.Fatal(err)
 	}
-	return &DAO{Conn: conn}
+	return &DAO{DB: conn}
 }
 
 func MigrateUp() {
@@ -43,4 +53,11 @@ func MigrateUp() {
 
 func MigrateDown() {
 
+}
+
+func HandleRollback(tx *sql.Tx) {
+	err := tx.Rollback()
+	if err != nil {
+		log.Println("Failed to rollback Transaction\n", err)
+	}
 }
