@@ -33,6 +33,18 @@ func (s *GRPCServer) CreateUser(_ context.Context, request *proto.CreateUserRequ
 	return &proto.CreateUserResponse{User: user.ConvertToProtobuff(), Session: session.ConvertToProtobuff(representation.Json)}, nil
 }
 
+func (s *GRPCServer) CreateGuestUser(_ context.Context, request *proto.CreateGuestUserRequest) (*proto.CreateGuestUserResponse, error) {
+	usersService := services.NewUserService(s.dao)
+
+	user, session, representation, err := usersService.CreateGuestUser(request)
+	if err != nil {
+		fmt.Printf("FATAL: %+v\n", err)
+		return nil, errors.Cause(err)
+	}
+
+	return &proto.CreateGuestUserResponse{User: user.ConvertToProtobuff(), Session: session.ConvertToProtobuff(representation.Json)}, nil
+}
+
 func (s *GRPCServer) GetUser(_ context.Context, request *proto.GetUserRequest) (*proto.GetUserResponse, error) {
 	switch ident := request.Identifier.(type) {
 	case *proto.GetUserRequest_Email:
@@ -50,41 +62,6 @@ func (s *GRPCServer) GetUser(_ context.Context, request *proto.GetUserRequest) (
 	}
 
 	return nil, errors.New("unknown user identifier type")
-}
-
-func (s *GRPCServer) CreateGuestUser(_ context.Context, request *proto.CreateGuestUserRequest) (*proto.CreateGuestUserResponse, error) {
-	tx, err := s.dao.DB.Begin()
-	if err != nil {
-		panic(err)
-	}
-
-	user, err := s.actions.buildGuestUser(tx, request.Email)
-
-	sessionUUID := uuid.New().String()
-	sessionToken, json, err := s.actions.buildSessionRepresentation(user, sessionUUID, request.ScopeGroupings)
-	if err != nil {
-		tx.Rollback()
-		panic(err)
-	}
-
-	session, err := s.actions.buildSession(tx, sessionUUID, user.Uuid, sessionToken)
-	if err != nil {
-		tx.Rollback()
-		panic(err)
-	}
-
-	_, err = s.actions.buildScopeGroupings(tx, request.ScopeGroupings, session.Uuid)
-	if err != nil {
-		tx.Rollback()
-		panic(err)
-	}
-
-	err = tx.Commit()
-	if err != nil {
-		panic(err)
-	}
-
-	return &proto.CreateGuestUserResponse{User: user.ConvertToProtobuff(), Session: session.ConvertToProtobuff(json)}, nil
 }
 
 func (s *GRPCServer) CreatePasswordResetToken(_ context.Context, request *proto.CreatePasswordResetTokenRequest) (*proto.CreatePasswordResetTokenResponse, error) {

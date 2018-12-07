@@ -9,15 +9,15 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-type UsersService struct {
+type UserService struct {
 	dao *db.DAO
 }
 
-func NewUserService(dao *db.DAO) *UsersService {
-	return &UsersService{dao:dao}
+func NewUserService(dao *db.DAO) *UserService {
+	return &UserService{dao: dao}
 }
 
-func (us *UsersService) CreateUser(request *proto.CreateUserRequest) (*models.User, *models.Session, *models.SessionRepresentation, error) {
+func (us *UserService) CreateUser(request *proto.CreateUserRequest) (*models.User, *models.Session, *models.SessionRepresentation, error) {
 	hashedPassword, err := confirmPasswordAndHash(request.Password, request.PasswordConfirmation)
 	if err != nil {
 		return nil, nil, nil, err
@@ -27,7 +27,6 @@ func (us *UsersService) CreateUser(request *proto.CreateUserRequest) (*models.Us
 	if err != nil {
 		return nil, nil, nil, err
 	}
-
 	repo := db.NewRepoUsingTransaction(tx)
 
 	user, err := repo.CreateUser(request.Email, hashedPassword, false)
@@ -36,31 +35,7 @@ func (us *UsersService) CreateUser(request *proto.CreateUserRequest) (*models.Us
 		return nil, nil, nil, err
 	}
 
-	sessionService := NewSessionService(repo)
-	session, err := sessionService.CreateSession(user.Uuid)
-	if err != nil {
-		db.HandleRollback(tx)
-		return nil, nil, nil, err
-	}
-
-	scopeGroupings, err := sessionService.BuildScopeGroupings(session.Uuid, request.ScopeGroupings)
-	if err != nil {
-		db.HandleRollback(tx)
-		return nil, nil, nil, err
-	}
-
-	representationsService := NewSessionRepresentationService(user.Uuid, session.Uuid)
-	for _, sg := range scopeGroupings {
-		representationsService.AddScopeGrouping(sg.Scopes, sg.Expiration)
-	}
-
-	representation, err := representationsService.GenerateSession()
-	if err != nil {
-		db.HandleRollback(tx)
-		return nil, nil, nil, err
-	}
-
-	err = sessionService.AddTokenToSession(session.Uuid, representation.Token)
+	session, representation, err := buildSessionAndRepresentation(repo, user.Uuid, request.ScopeGroupings)
 	if err != nil {
 		db.HandleRollback(tx)
 		return nil, nil, nil, err
@@ -74,24 +49,40 @@ func (us *UsersService) CreateUser(request *proto.CreateUserRequest) (*models.Us
 	return user, session, representation, nil
 }
 
-func (us *UsersService) CreateGuestUser(email string) (*models.User, error) {
+func (us *UserService) CreateGuestUser(request *proto.CreateGuestUserRequest) (*models.User, *models.Session, *models.SessionRepresentation, error) {
 	hash, err := buildPasswordHash(random.String(16))
 	if err != nil {
-		return nil, err
+		return nil, nil, nil, err
 	}
 
-	email = email + "." + random.String(6) + ".guest"
+	email := request.Email + "." + random.String(6) + ".guest"
 
-	repo := db.NewRepo(us.dao.DB)
+	tx, err := us.dao.NewTransaction()
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	repo := db.NewRepoUsingTransaction(tx)
+
 	user, err := repo.CreateUser(email, hash, true)
 	if err != nil {
-		return nil, err
+		return nil, nil, nil, err
 	}
 
-	return user, nil
+	session, representation, err := buildSessionAndRepresentation(repo, user.Uuid, request.ScopeGroupings)
+	if err != nil {
+		db.HandleRollback(tx)
+		return nil, nil, nil, err
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	return user, session, representation, nil
 }
 
-func (us *UsersService) UpdateUserPassword(email string, passwordResetToken string, password string, passwordConfirmation string) error {
+func (us *UserService) UpdateUserPassword(email string, passwordResetToken string, password string, passwordConfirmation string) error {
 	repo := db.NewRepo(us.dao.DB)
 
 	prt, err := repo.GetPasswordResetToken(passwordResetToken)
@@ -121,7 +112,7 @@ func (us *UsersService) UpdateUserPassword(email string, passwordResetToken stri
 	return nil
 }
 
-func (us *UsersService) DeleteUser() error {
+func (us *UserService) DeleteUser() error {
 	panic("build me")
 }
 
@@ -145,4 +136,34 @@ func buildPasswordHash(password string) (string, error) {
 	}
 
 	return string(hash), nil
+}
+
+func buildSessionAndRepresentation(repo * db.Repo, userUUID string, groupings []*proto.ScopeGrouping) (*models.Session, *models.SessionRepresentation, error) {
+	sessionService := NewSessionService(repo)
+	session, err := sessionService.CreateSession(userUUID)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	scopeGroupings, err := sessionService.BuildScopeGroupings(session.Uuid, groupings)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	representationsService := NewSessionRepresentationService(userUUID, session.Uuid)
+	for _, sg := range scopeGroupings {
+		representationsService.AddScopeGrouping(sg.Scopes, sg.Expiration)
+	}
+
+	representation, err := representationsService.GenerateSession()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	err = sessionService.AddTokenToSession(session.Uuid, representation.Token)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return session, representation, nil
 }
