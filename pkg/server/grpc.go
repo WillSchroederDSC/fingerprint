@@ -24,25 +24,33 @@ func NewGRPCServer(dao *db.DAO) *GRPCServer {
 func (s *GRPCServer) CreateUser(_ context.Context, request *proto.CreateUserRequest) (*proto.CreateUserResponse, error) {
 	usersService := services.NewUserService(s.dao)
 
-	user, session, representation, err := usersService.CreateUser(request)
+	user, session, err := usersService.CreateUser(request)
 	if err != nil {
-		fmt.Printf("FATAL: %+v\n", err)
-		return nil, errors.Cause(err)
+		return nil, PrintAndUnwrapError(err)
 	}
 
-	return &proto.CreateUserResponse{User: user.ConvertToProtobuff(), Session: session.ConvertToProtobuff(representation.Json)}, nil
+	json, err  := services.DecodeTokenToJson(session.Token)
+	if err != nil {
+		return nil, PrintAndUnwrapError(err)
+	}
+
+	return &proto.CreateUserResponse{User: user.ConvertToProtobuff(), Session: session.ConvertToProtobuff(json)}, nil
 }
 
 func (s *GRPCServer) CreateGuestUser(_ context.Context, request *proto.CreateGuestUserRequest) (*proto.CreateGuestUserResponse, error) {
 	usersService := services.NewUserService(s.dao)
 
-	user, session, representation, err := usersService.CreateGuestUser(request)
+	user, session, err := usersService.CreateGuestUser(request)
 	if err != nil {
-		fmt.Printf("FATAL: %+v\n", err)
-		return nil, errors.Cause(err)
+		return nil, PrintAndUnwrapError(err)
 	}
 
-	return &proto.CreateGuestUserResponse{User: user.ConvertToProtobuff(), Session: session.ConvertToProtobuff(representation.Json)}, nil
+	json, err  := services.DecodeTokenToJson(session.Token)
+	if err != nil {
+		return nil, PrintAndUnwrapError(err)
+	}
+
+	return &proto.CreateGuestUserResponse{User: user.ConvertToProtobuff(), Session: session.ConvertToProtobuff(json)}, nil
 }
 
 func (s *GRPCServer) GetUser(_ context.Context, request *proto.GetUserRequest) (*proto.GetUserResponse, error) {
@@ -175,4 +183,9 @@ func (s *GRPCServer) DeleteSession(_ context.Context, request *proto.DeleteSessi
 	}
 
 	return &proto.DeleteSessionResponse{Successful: false}, nil
+}
+
+func PrintAndUnwrapError(err error) error {
+	fmt.Printf("FATAL: %+v\n", err)
+	return errors.Cause(err)
 }

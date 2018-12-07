@@ -17,69 +17,70 @@ func NewUserService(dao *db.DAO) *UserService {
 	return &UserService{dao: dao}
 }
 
-func (us *UserService) CreateUser(request *proto.CreateUserRequest) (*models.User, *models.Session, *models.SessionRepresentation, error) {
+func (us *UserService) CreateUser(request *proto.CreateUserRequest) (*models.User, *models.Session, error) {
 	hashedPassword, err := confirmPasswordAndHash(request.Password, request.PasswordConfirmation)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, err
 	}
 
 	tx, err := us.dao.NewTransaction()
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, err
 	}
 	repo := db.NewRepoUsingTransaction(tx)
 
 	user, err := repo.CreateUser(request.Email, hashedPassword, false)
 	if err != nil {
 		db.HandleRollback(tx)
-		return nil, nil, nil, err
+		return nil, nil, err
 	}
 
-	session, representation, err := buildSessionAndRepresentation(repo, user.Uuid, request.ScopeGroupings)
+	session, err := buildSession(repo, user.Uuid, request.ScopeGroupings)
 	if err != nil {
 		db.HandleRollback(tx)
-		return nil, nil, nil, err
+		return nil, nil, err
 	}
 
 	err = tx.Commit()
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, err
 	}
 
-	return user, session, representation, nil
+	return user, session, nil
 }
 
-func (us *UserService) CreateGuestUser(request *proto.CreateGuestUserRequest) (*models.User, *models.Session, *models.SessionRepresentation, error) {
+func (us *UserService) CreateGuestUser(request *proto.CreateGuestUserRequest) (*models.User, *models.Session, error) {
 	hash, err := buildPasswordHash(random.String(16))
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, err
 	}
 
 	email := request.Email + "." + random.String(6) + ".guest"
 
 	tx, err := us.dao.NewTransaction()
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, err
 	}
 	repo := db.NewRepoUsingTransaction(tx)
 
 	user, err := repo.CreateUser(email, hash, true)
 	if err != nil {
-		return nil, nil, nil, err
+		db.HandleRollback(tx)
+		return nil, nil, err
 	}
 
-	session, representation, err := buildSessionAndRepresentation(repo, user.Uuid, request.ScopeGroupings)
+	session, err := buildSession(repo, user.Uuid, request.ScopeGroupings)
 	if err != nil {
 		db.HandleRollback(tx)
-		return nil, nil, nil, err
+		return nil, nil, err
 	}
 
 	err = tx.Commit()
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, err
 	}
 
-	return user, session, representation, nil
+	return user, session, nil
 }
 
 func (us *UserService) UpdateUserPassword(email string, passwordResetToken string, password string, passwordConfirmation string) error {
@@ -138,16 +139,16 @@ func buildPasswordHash(password string) (string, error) {
 	return string(hash), nil
 }
 
-func buildSessionAndRepresentation(repo * db.Repo, userUUID string, groupings []*proto.ScopeGrouping) (*models.Session, *models.SessionRepresentation, error) {
+func buildSession(repo * db.Repo, userUUID string, groupings []*proto.ScopeGrouping) (*models.Session, error) {
 	sessionService := NewSessionService(repo)
 	session, err := sessionService.CreateSession(userUUID)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	scopeGroupings, err := sessionService.BuildScopeGroupings(session.Uuid, groupings)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	representationsService := NewSessionRepresentationService(userUUID, session.Uuid)
@@ -157,13 +158,13 @@ func buildSessionAndRepresentation(repo * db.Repo, userUUID string, groupings []
 
 	representation, err := representationsService.GenerateSession()
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	err = sessionService.AddTokenToSession(session.Uuid, representation.Token)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	return session, representation, nil
+	return session, nil
 }
