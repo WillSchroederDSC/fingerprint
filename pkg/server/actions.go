@@ -5,7 +5,9 @@ import (
 	"github.com/pkg/errors"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/willschroeder/fingerprint/pkg/db"
+	"github.com/willschroeder/fingerprint/pkg/models"
 	"github.com/willschroeder/fingerprint/pkg/proto"
+	"github.com/willschroeder/fingerprint/pkg/random"
 	"github.com/willschroeder/fingerprint/pkg/session_representations"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -41,7 +43,7 @@ func confirmPasswordAndHash(password string, passwordConfirmation string) (strin
 	return hash, nil
 }
 
-func (b *Actions) buildUser(tx *sql.Tx, email string, password string, passwordConfirmation string) (*db.User, error) {
+func (b *Actions) buildUser(tx *sql.Tx, email string, password string, passwordConfirmation string) (*models.User, error) {
 	hash, err := confirmPasswordAndHash(password, passwordConfirmation)
 	if err != nil {
 		return nil, err
@@ -83,13 +85,13 @@ func (b *Actions) updateUserPassword(email string, passwordResetToken string, pa
 	return nil
 }
 
-func (b *Actions) buildGuestUser(tx *sql.Tx, email string) (*db.User, error) {
-	hash, err := BuildPasswordHash(db.RandomString(16))
+func (b *Actions) buildGuestUser(tx *sql.Tx, email string) (*models.User, error) {
+	hash, err := BuildPasswordHash(random.String(16))
 	if err != nil {
 		return nil, err
 	}
 
-	email = email + "." + db.RandomString(6) + ".guest"
+	email = email + "." + random.String(6) + ".guest"
 
 	user, err := b.repo.CreateUser(tx, email, hash, true)
 	if err != nil {
@@ -99,7 +101,7 @@ func (b *Actions) buildGuestUser(tx *sql.Tx, email string) (*db.User, error) {
 	return user, nil
 }
 
-func (b *Actions) buildSession(tx *sql.Tx, newSessionUUID string, userUUID string, sessionToken string) (*db.Session, error) {
+func (b *Actions) buildSession(tx *sql.Tx, newSessionUUID string, userUUID string, sessionToken string) (*models.Session, error) {
 	session, err := b.repo.CreateSession(tx, newSessionUUID, userUUID, sessionToken)
 	if err != nil {
 		return nil, err
@@ -108,8 +110,8 @@ func (b *Actions) buildSession(tx *sql.Tx, newSessionUUID string, userUUID strin
 	return session, nil
 }
 
-func (b *Actions) buildScopeGroupings(tx *sql.Tx, protoScopeGroupings []*proto.ScopeGrouping, sessionUUID string) ([]*db.ScopeGrouping, error) {
-	scopeGroupings := make([]*db.ScopeGrouping, len(protoScopeGroupings))
+func (b *Actions) buildScopeGroupings(tx *sql.Tx, protoScopeGroupings []*proto.ScopeGrouping, sessionUUID string) ([]*models.ScopeGrouping, error) {
+	scopeGroupings := make([]*models.ScopeGrouping, len(protoScopeGroupings))
 	for i, sg := range protoScopeGroupings {
 		exp, err := ptypes.Timestamp(sg.Expiration)
 		if err != nil {
@@ -126,7 +128,7 @@ func (b *Actions) buildScopeGroupings(tx *sql.Tx, protoScopeGroupings []*proto.S
 	return scopeGroupings, nil
 }
 
-func (b *Actions) buildSessionRepresentation(user *db.User, sessionUUID string, protoScopeGroupings []*proto.ScopeGrouping) (tokenStr string, json string, err error) {
+func (b *Actions) buildSessionRepresentation(user *models.User, sessionUUID string, protoScopeGroupings []*proto.ScopeGrouping) (tokenStr string, json string, err error) {
 	tf := session_representations.NewTokenFactory(user.Uuid, sessionUUID)
 	for _, sg := range protoScopeGroupings {
 		exp, err := ptypes.Timestamp(sg.Expiration)

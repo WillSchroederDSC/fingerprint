@@ -5,18 +5,29 @@ import (
 	"github.com/google/uuid"
 	"github.com/lib/pq"
 	"github.com/pkg/errors"
+	"github.com/willschroeder/fingerprint/pkg/models"
+	"github.com/willschroeder/fingerprint/pkg/random"
 	"time"
 )
 
 type Repo struct {
-	Dao *DAO
+	Dao *DAO // Change to just the connection
+	//tx *sql.Tx
 }
 
 func NewRepo(dao *DAO) *Repo {
 	return &Repo{Dao:dao}
 }
 
-func (r *Repo) CreateUser(tx *sql.Tx, email string, encryptedPassword string, isGuest bool) (*User, error) {
+//func (r *Repo) exec(query string) (sql.Result, error)  {
+//	if r.tx != nil {
+//		return r.tx.Exec(query)
+//	}
+//
+//	return r.Dao.Conn.Exec(query)
+//}
+
+func (r *Repo) CreateUser(tx *sql.Tx, email string, encryptedPassword string, isGuest bool) (*models.User, error) {
 	userUUID := uuid.New().String()
 
 	sqlStatement := "INSERT INTO users (Uuid, email, encrypted_password, is_guest, updated_at, created_at) VALUES ($1, $2, $3, $4, $5, $6)"
@@ -33,11 +44,11 @@ func (r *Repo) CreateUser(tx *sql.Tx, email string, encryptedPassword string, is
 	return user, nil
 }
 
-func (r *Repo) GetUserWithUUID(userUUID string) (*User, error) {
+func (r *Repo) GetUserWithUUID(userUUID string) (*models.User, error) {
 	sqlStatement := "SELECT Uuid,email,encrypted_password,is_guest FROM users WHERE Uuid=$1"
 
 	row := r.Dao.Conn.QueryRow(sqlStatement, userUUID)
-	var user User
+	var user models.User
 	err := row.Scan(&user.Uuid, &user.Email, &user.EncryptedPassword, &user.IsGuest)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to find user")
@@ -56,11 +67,11 @@ func (r *Repo) UpdateUserPassword(email string, encryptedPassword string) error 
 	return nil
 }
 
-func (r *Repo) GetUserWithEmail(email string) (*User, error) {
+func (r *Repo) GetUserWithEmail(email string) (*models.User, error) {
 	sqlStatement := "SELECT Uuid,email,encrypted_password,is_guest FROM users WHERE email=$1"
 
 	row := r.Dao.Conn.QueryRow(sqlStatement, email)
-	var user User
+	var user models.User
 	err := row.Scan(&user.Uuid, &user.Email, &user.EncryptedPassword, &user.IsGuest)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get user")
@@ -69,11 +80,11 @@ func (r *Repo) GetUserWithEmail(email string) (*User, error) {
 	return &user, nil
 }
 
-func (r *Repo) GetUserWithUUIDUsingTx(tx *sql.Tx, userUUID string) (*User, error) {
+func (r *Repo) GetUserWithUUIDUsingTx(tx *sql.Tx, userUUID string) (*models.User, error) {
 	sqlStatement := "SELECT Uuid,email,encrypted_password,is_guest FROM users WHERE Uuid=$1"
 
 	row := tx.QueryRow(sqlStatement, userUUID)
-	var user User
+	var user models.User
 	err := row.Scan(&user.Uuid, &user.Email, &user.EncryptedPassword, &user.IsGuest)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get user")
@@ -82,7 +93,7 @@ func (r *Repo) GetUserWithUUIDUsingTx(tx *sql.Tx, userUUID string) (*User, error
 	return &user, nil
 }
 
-func (r *Repo) CreateSession(tx *sql.Tx, newSessionUUID string, userUUID string, token string) (*Session, error) {
+func (r *Repo) CreateSession(tx *sql.Tx, newSessionUUID string, userUUID string, token string) (*models.Session, error) {
 	sqlStatement := "INSERT INTO sessions (Uuid, user_uuid, token, created_at) VALUES ($1, $2, $3, $4)"
 	_, err := tx.Exec(sqlStatement, newSessionUUID, userUUID, token, time.Now().UTC())
 	if err != nil {
@@ -97,11 +108,11 @@ func (r *Repo) CreateSession(tx *sql.Tx, newSessionUUID string, userUUID string,
 	return session, nil
 }
 
-func (r *Repo) GetSessionWithUUIDUsingTx(tx *sql.Tx, sessionUUID string) (*Session, error) {
+func (r *Repo) GetSessionWithUUIDUsingTx(tx *sql.Tx, sessionUUID string) (*models.Session, error) {
 	sqlStatement := "SELECT Uuid,token FROM sessions WHERE Uuid=$1"
 
 	row := tx.QueryRow(sqlStatement, sessionUUID)
-	var session Session
+	var session models.Session
 	err := row.Scan(&session.Uuid, &session.Token)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get session")
@@ -110,11 +121,11 @@ func (r *Repo) GetSessionWithUUIDUsingTx(tx *sql.Tx, sessionUUID string) (*Sessi
 	return &session, nil
 }
 
-func (r *Repo) GetSessionWithToken(token string) (*Session, error) {
+func (r *Repo) GetSessionWithToken(token string) (*models.Session, error) {
 	sqlStatement := "SELECT Uuid,token FROM sessions WHERE token=$1"
 
 	row := r.Dao.Conn.QueryRow(sqlStatement, token)
-	var session Session
+	var session models.Session
 	err := row.Scan(&session.Uuid, &session.Token)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get session")
@@ -123,7 +134,7 @@ func (r *Repo) GetSessionWithToken(token string) (*Session, error) {
 	return &session, nil
 }
 
-func (r *Repo) CreateScopeGrouping(tx *sql.Tx, sessionUUID string, scopes []string, expiration time.Time) (*ScopeGrouping, error) {
+func (r *Repo) CreateScopeGrouping(tx *sql.Tx, sessionUUID string, scopes []string, expiration time.Time) (*models.ScopeGrouping, error) {
 	groupingUUID := uuid.New().String()
 
 	sqlStatement := "INSERT INTO scope_groupings (Uuid, session_uuid, scopes, expiration, created_at) VALUES ($1, $2, $3, $4, $5)"
@@ -140,10 +151,10 @@ func (r *Repo) CreateScopeGrouping(tx *sql.Tx, sessionUUID string, scopes []stri
 	return grouping, nil
 }
 
-func (r *Repo) GetScopeGroupingWithUUID(tx *sql.Tx, groupingUUID string) (*ScopeGrouping, error) {
+func (r *Repo) GetScopeGroupingWithUUID(tx *sql.Tx, groupingUUID string) (*models.ScopeGrouping, error) {
 	sqlStatement := "SELECT Uuid,scopes,expiration FROM scope_groupings WHERE Uuid=$1"
 	row := tx.QueryRow(sqlStatement, groupingUUID)
-	var sg ScopeGrouping
+	var sg models.ScopeGrouping
 	err := row.Scan(&sg.Uuid, pq.Array(&sg.Scopes), &sg.Expiration)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get scope grouping")
@@ -170,9 +181,9 @@ func (r *Repo) DeleteSessionWithToken(token string) interface{} {
 	return nil
 }
 
-func (r *Repo) CreatePasswordResetToken(userUUID string, expiration time.Time) (*PasswordResets, error) {
+func (r *Repo) CreatePasswordResetToken(userUUID string, expiration time.Time) (*models.PasswordResets, error) {
 	resetUUID := uuid.New().String()
-	newResetToken := RandomString(16)
+	newResetToken := random.String(16)
 	sqlStatement := "INSERT INTO password_resets (Uuid, user_uuid, token, expiration, created_at) VALUES ($1, $2, $3, $4, $5)"
 	_, err := r.Dao.Conn.Exec(sqlStatement, resetUUID, userUUID, newResetToken, expiration, time.Now().UTC())
 	if err != nil {
@@ -187,10 +198,10 @@ func (r *Repo) CreatePasswordResetToken(userUUID string, expiration time.Time) (
 	return prt, nil
 }
 
-func (r *Repo) GetPasswordResetToken(token string) (*PasswordResets, error) {
+func (r *Repo) GetPasswordResetToken(token string) (*models.PasswordResets, error) {
 	sqlStatement := "SELECT Uuid,user_uuid,token,expiration FROM password_resets WHERE token=$1"
 	row := r.Dao.Conn.QueryRow(sqlStatement, token)
-	var t PasswordResets
+	var t models.PasswordResets
 	err := row.Scan(&t.Uuid, &t.UserUuid, &t.Token, &t.Expiration)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get password reset")
