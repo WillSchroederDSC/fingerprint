@@ -5,8 +5,9 @@ import (
 	"github.com/willschroeder/fingerprint/pkg/db"
 	"github.com/willschroeder/fingerprint/pkg/models"
 	"github.com/willschroeder/fingerprint/pkg/proto"
-	"github.com/willschroeder/fingerprint/pkg/random"
+	"github.com/willschroeder/fingerprint/pkg/util"
 	"golang.org/x/crypto/bcrypt"
+	"time"
 )
 
 type UserService struct {
@@ -50,12 +51,12 @@ func (us *UserService) CreateUser(request *proto.CreateUserRequest) (*models.Use
 }
 
 func (us *UserService) CreateGuestUser(request *proto.CreateGuestUserRequest) (*models.User, *models.Session, error) {
-	hash, err := buildPasswordHash(random.String(16))
+	hash, err := BuildPasswordHash(util.String(16))
 	if err != nil {
 		return nil, nil, err
 	}
 
-	email := request.Email + "." + random.String(6) + ".guest"
+	email := request.Email + "." + util.String(6) + ".guest"
 
 	tx, err := us.dao.NewTransaction()
 	if err != nil {
@@ -113,6 +114,27 @@ func (us *UserService) UpdateUserPassword(email string, passwordResetToken strin
 	return nil
 }
 
+func (us *UserService) CreatePasswordResetToken(email string, expiration time.Time) (*models.PasswordReset, error) {
+	repo := db.NewRepo(us.dao.DB)
+
+	user, err := repo.GetUserWithEmail(email)
+	if err != nil {
+		return nil, err
+	}
+
+	err = repo.DeleteAllPasswordResetTokensForUser(user.Uuid)
+	if err != nil {
+		return nil, err
+	}
+
+	resetToken, err := repo.CreatePasswordResetToken(user.Uuid, expiration)
+	if err != nil {
+		return nil, err
+	}
+
+	return resetToken, nil
+}
+
 func (us *UserService) DeleteUser() error {
 	panic("build me")
 }
@@ -122,7 +144,7 @@ func confirmPasswordAndHash(password string, passwordConfirmation string) (strin
 		return "", errors.New("password and confirmation don't match")
 	}
 
-	hash, err := buildPasswordHash(password)
+	hash, err := BuildPasswordHash(password)
 	if err != nil {
 		return "", err
 	}
@@ -130,7 +152,7 @@ func confirmPasswordAndHash(password string, passwordConfirmation string) (strin
 	return hash, nil
 }
 
-func buildPasswordHash(password string) (string, error) {
+func BuildPasswordHash(password string) (string, error) {
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return "", errors.Wrap(err, "failed to encrypt password")

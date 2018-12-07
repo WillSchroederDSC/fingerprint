@@ -6,7 +6,7 @@ import (
 	"github.com/lib/pq"
 	"github.com/pkg/errors"
 	"github.com/willschroeder/fingerprint/pkg/models"
-	"github.com/willschroeder/fingerprint/pkg/random"
+	"github.com/willschroeder/fingerprint/pkg/util"
 	"time"
 )
 
@@ -185,7 +185,7 @@ func (r *Repo) DeleteSessionWithUUID(sessionUUID string) error {
 	return nil
 }
 
-func (r *Repo) DeleteSessionWithToken(token string) interface{} {
+func (r *Repo) DeleteSessionWithToken(token string) error {
 	sqlStatement := "DELETE FROM sessions WHERE token=$1"
 	_, err := r.exec(sqlStatement, token)
 	if err != nil {
@@ -194,9 +194,9 @@ func (r *Repo) DeleteSessionWithToken(token string) interface{} {
 	return nil
 }
 
-func (r *Repo) CreatePasswordResetToken(userUUID string, expiration time.Time) (*models.PasswordResets, error) {
+func (r *Repo) CreatePasswordResetToken(userUUID string, expiration time.Time) (*models.PasswordReset, error) {
 	resetUUID := uuid.New().String()
-	newResetToken := random.String(16)
+	newResetToken := util.String(16)
 	sqlStatement := "INSERT INTO password_resets (Uuid, user_uuid, token, expiration, created_at) VALUES ($1, $2, $3, $4, $5)"
 	_, err := r.exec(sqlStatement, resetUUID, userUUID, newResetToken, expiration, time.Now().UTC())
 	if err != nil {
@@ -211,10 +211,10 @@ func (r *Repo) CreatePasswordResetToken(userUUID string, expiration time.Time) (
 	return prt, nil
 }
 
-func (r *Repo) GetPasswordResetToken(token string) (*models.PasswordResets, error) {
+func (r *Repo) GetPasswordResetToken(token string) (*models.PasswordReset, error) {
 	sqlStatement := "SELECT Uuid,user_uuid,token,expiration FROM password_resets WHERE token=$1"
 	row := r.queryRow(sqlStatement, token)
-	var t models.PasswordResets
+	var t models.PasswordReset
 	err := row.Scan(&t.Uuid, &t.UserUuid, &t.Token, &t.Expiration)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get password reset")

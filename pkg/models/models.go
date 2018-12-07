@@ -54,7 +54,7 @@ func (sg *ScopeGrouping) ConvertToProtobuff() (*proto.ScopeGrouping, error) {
 	}, nil
 }
 
-type PasswordResets struct {
+type PasswordReset struct {
 	Uuid       string
 	UserUuid   int
 	Token      string

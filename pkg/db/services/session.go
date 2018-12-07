@@ -34,7 +34,6 @@ func (ss *SessionService) AddTokenToSession(sessionUUID string, token string) er
 	return nil
 }
 
-
 func (ss *SessionService) BuildScopeGroupings(sessionUUID string, protoScopeGroupings []*proto.ScopeGrouping) ([]*models.ScopeGrouping, error) {
 	scopeGroupings := make([]*models.ScopeGrouping, len(protoScopeGroupings))
 	for i, sg := range protoScopeGroupings {

@@ -2,14 +2,12 @@ package server
 
 import (
 	"fmt"
-	"github.com/golang/protobuf/ptypes"
-	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/willschroeder/fingerprint/pkg/db"
 	"github.com/willschroeder/fingerprint/pkg/db/services"
 	"github.com/willschroeder/fingerprint/pkg/proto"
 	"github.com/willschroeder/fingerprint/pkg/session_representations"
-
+	"github.com/willschroeder/fingerprint/pkg/util"
 )
 import "context"
 
@@ -54,15 +52,17 @@ func (s *GRPCServer) CreateGuestUser(_ context.Context, request *proto.CreateGue
 }
 
 func (s *GRPCServer) GetUser(_ context.Context, request *proto.GetUserRequest) (*proto.GetUserResponse, error) {
+	repo := db.NewRepo(s.dao.DB)
+
 	switch ident := request.Identifier.(type) {
 	case *proto.GetUserRequest_Email:
-		user, err := s.repo.GetUserWithEmail(ident.Email)
+		user, err := repo.GetUserWithEmail(ident.Email)
 		if err != nil {
 			panic(err)
 		}
 		return &proto.GetUserResponse{User: user.ConvertToProtobuff()}, nil
 	case *proto.GetUserRequest_Uuid:
-		user, err := s.repo.GetUserWithUUID(ident.Uuid)
+		user, err := repo.GetUserWithUUID(ident.Uuid)
 		if err != nil {
 			panic(err)
 		}
@@ -73,111 +73,113 @@ func (s *GRPCServer) GetUser(_ context.Context, request *proto.GetUserRequest) (
 }
 
 func (s *GRPCServer) CreatePasswordResetToken(_ context.Context, request *proto.CreatePasswordResetTokenRequest) (*proto.CreatePasswordResetTokenResponse, error) {
-	user, err := s.repo.GetUserWithEmail(request.Email)
+	usersService := services.NewUserService(s.dao)
+	exp, err := util.ConvertTimestampToTime(request.Expiration)
 	if err != nil {
-		panic(err)
+		return nil, PrintAndUnwrapError(err)
 	}
 
-	err = s.repo.DeleteAllPasswordResetTokensForUser(user.Uuid)
+	passwordReset, err := usersService.CreatePasswordResetToken(request.Email, exp)
 	if err != nil {
-		panic(err)
+		return nil, PrintAndUnwrapError(err)
 	}
 
-	exp, err := ptypes.Timestamp(request.Expiration)
-	if err != nil {
-		panic(err)
-	}
-
-	resetToken, err := s.repo.CreatePasswordResetToken(user.Uuid, exp)
-	if err != nil {
-		panic(err)
-	}
-
-	return &proto.CreatePasswordResetTokenResponse{PasswordResetToken: resetToken.Token}, nil
+	return &proto.CreatePasswordResetTokenResponse{PasswordResetToken: passwordReset.Token}, nil
 }
 
 func (s *GRPCServer) UpdateUserPassword(_ context.Context, request *proto.ResetUserPasswordRequest) (*proto.ResetUserPasswordResponse, error) {
-	err := s.actions.updateUserPassword(request.Email, request.PasswordResetToken, request.Password, request.PasswordConfirmation)
+	usersService := services.NewUserService(s.dao)
+	err := usersService.UpdateUserPassword(request.Email, request.PasswordResetToken, request.Password, request.PasswordConfirmation)
 	if err != nil {
-		panic(err)
+		return nil, PrintAndUnwrapError(err)
 	}
 
+	// TODO Return actual status
 	return &proto.ResetUserPasswordResponse{Status: proto.ResetUserPasswordResponse_SUCCESSFUL}, nil
 }
 
 func (s *GRPCServer) CreateSession(_ context.Context, request *proto.CreateSessionRequest) (*proto.CreateSessionResponse, error) {
-	user, err := s.repo.GetUserWithEmail(request.Email)
-	if err != nil {
-		panic(err)
-	}
-
-	hash, err := BuildPasswordHash(request.Password)
-	if err != nil {
-		panic(err)
-	}
-
-	if hash != user.EncryptedPassword {
-		return nil, errors.New("incorrect password")
-	}
-
-	tx, err := s.dao.DB.Begin()
-	if err != nil {
-		panic(err)
-	}
-
-	sessionUUID := uuid.New().String()
-	sessionToken, json, err := s.actions.buildSessionRepresentation(user, sessionUUID, request.ScopeGroupings)
-	if err != nil {
-		tx.Rollback()
-		panic(err)
-	}
-
-	session, err := s.actions.buildSession(tx, sessionUUID, user.Uuid, sessionToken)
-	if err != nil {
-		tx.Rollback()
-		panic(err)
-	}
-
-	_, err = s.actions.buildScopeGroupings(tx, request.ScopeGroupings, session.Uuid)
-	if err != nil {
-		tx.Rollback()
-		panic(err)
-	}
-
-	err = tx.Commit()
-	if err != nil {
-		panic(err)
-	}
-	return &proto.CreateSessionResponse{Session: &proto.Session{Uuid: session.Uuid, Token: sessionToken, Json: json}}, nil
+	//repo := db.NewRepo(s.dao.DB)
+	//
+	//user, err := repo.GetUserWithEmail(request.Email)
+	//if err != nil {
+	//	return nil, PrintAndUnwrapError(err)
+	//}
+	//
+	//hash, err := services.BuildPasswordHash(request.Password)
+	//if err != nil {
+	//	return nil, PrintAndUnwrapError(err)
+	//}
+	//
+	//// TODO this check should be moved to the user service
+	//if hash != user.EncryptedPassword {
+	//	return nil, errors.New("incorrect password")
+	//}
+	//
+	//sessionService := services.NewSessionService(db.NewRepo(s.dao.DB))
+	//sessionService.CreateSession(user.Uuid)
+	//
+	//tx, err := s.dao.DB.Begin()
+	//if err != nil {
+	//	panic(err)
+	//}
+	//
+	//sessionUUID := uuid.New().String()
+	//sessionToken, json, err := s.actions.buildSessionRepresentation(user, sessionUUID, request.ScopeGroupings)
+	//if err != nil {
+	//	tx.Rollback()
+	//	panic(err)
+	//}
+	//
+	//session, err := s.actions.buildSession(tx, sessionUUID, user.Uuid, sessionToken)
+	//if err != nil {
+	//	tx.Rollback()
+	//	panic(err)
+	//}
+	//
+	//_, err = s.actions.buildScopeGroupings(tx, request.ScopeGroupings, session.Uuid)
+	//if err != nil {
+	//	tx.Rollback()
+	//	panic(err)
+	//}
+	//
+	//err = tx.Commit()
+	//if err != nil {
+	//	panic(err)
+	//}
+	//return &proto.CreateSessionResponse{Session: &proto.Session{Uuid: session.Uuid, Token: sessionToken, Json: json}}, nil
+	panic("not yet")
 }
 
 func (s *GRPCServer) GetSession(_ context.Context, request *proto.GetSessionRequest) (*proto.GetSessionResponse, error) {
-	session, err := s.repo.GetSessionWithToken(request.Token)
+	repo := db.NewRepo(s.dao.DB)
+	session, err := repo.GetSessionWithToken(request.Token)
 	if err != nil {
-		panic(err)
+		return nil, PrintAndUnwrapError(err)
 	}
 
 	json, err := session_representations.DecodeTokenToJson(session.Token)
 	if err != nil {
-		panic(err)
+		return nil, PrintAndUnwrapError(err)
 	}
-
 
 	return &proto.GetSessionResponse{Session: &proto.Session{Uuid: session.Uuid, Token: session.Token, Json: json}}, nil
 }
 
 func (s *GRPCServer) DeleteSession(_ context.Context, request *proto.DeleteSessionRequest) (*proto.DeleteSessionResponse, error) {
+	repo := db.NewRepo(s.dao.DB)
+
 	switch representation := request.Representation.(type) {
 	case *proto.DeleteSessionRequest_Uuid:
-		err := s.repo.DeleteSessionWithUUID(representation.Uuid)
+		err := repo.DeleteSessionWithUUID(representation.Uuid)
 		if err != nil {
-			panic(err)
+			return nil, PrintAndUnwrapError(err)
 		}
 		return &proto.DeleteSessionResponse{Successful: true}, nil
 	case *proto.DeleteSessionRequest_Token:
-		err := s.repo.DeleteSessionWithToken(representation.Token)
+		err := repo.DeleteSessionWithToken(representation.Token)
 		if err != nil {
-			panic(err)
+			return nil, PrintAndUnwrapError(err)
 		}
 		return &proto.DeleteSessionResponse{Successful: true}, nil
 	}
