@@ -1,13 +1,12 @@
 package server
 
 import (
-	"fmt"
 	"github.com/pkg/errors"
 	"github.com/willschroeder/fingerprint/pkg/db"
-	"github.com/willschroeder/fingerprint/pkg/db/services"
+	"github.com/willschroeder/fingerprint/pkg/services"
 	"github.com/willschroeder/fingerprint/pkg/proto"
-	"github.com/willschroeder/fingerprint/pkg/session_representations"
 	"github.com/willschroeder/fingerprint/pkg/util"
+	"log"
 )
 import "context"
 
@@ -24,12 +23,12 @@ func (s *GRPCServer) CreateUser(_ context.Context, request *proto.CreateUserRequ
 
 	user, session, err := usersService.CreateUser(request)
 	if err != nil {
-		return nil, PrintAndUnwrapError(err)
+		return nil, LogAndUnwrapError(err)
 	}
 
 	json, err := services.DecodeTokenToJson(session.Token)
 	if err != nil {
-		return nil, PrintAndUnwrapError(err)
+		return nil, LogAndUnwrapError(err)
 	}
 
 	return &proto.CreateUserResponse{User: user.ConvertToProtobuff(), Session: session.ConvertToProtobuff(json)}, nil
@@ -40,12 +39,12 @@ func (s *GRPCServer) CreateGuestUser(_ context.Context, request *proto.CreateGue
 
 	user, session, err := usersService.CreateGuestUser(request)
 	if err != nil {
-		return nil, PrintAndUnwrapError(err)
+		return nil, LogAndUnwrapError(err)
 	}
 
 	json, err := services.DecodeTokenToJson(session.Token)
 	if err != nil {
-		return nil, PrintAndUnwrapError(err)
+		return nil, LogAndUnwrapError(err)
 	}
 
 	return &proto.CreateGuestUserResponse{User: user.ConvertToProtobuff(), Session: session.ConvertToProtobuff(json)}, nil
@@ -76,12 +75,12 @@ func (s *GRPCServer) CreatePasswordResetToken(_ context.Context, request *proto.
 	usersService := services.NewUserService(s.dao)
 	exp, err := util.ConvertTimestampToTime(request.Expiration)
 	if err != nil {
-		return nil, PrintAndUnwrapError(err)
+		return nil, LogAndUnwrapError(err)
 	}
 
 	passwordReset, err := usersService.CreatePasswordResetToken(request.Email, exp)
 	if err != nil {
-		return nil, PrintAndUnwrapError(err)
+		return nil, LogAndUnwrapError(err)
 	}
 
 	return &proto.CreatePasswordResetTokenResponse{PasswordResetToken: passwordReset.Token}, nil
@@ -91,7 +90,7 @@ func (s *GRPCServer) UpdateUserPassword(_ context.Context, request *proto.ResetU
 	usersService := services.NewUserService(s.dao)
 	err := usersService.UpdateUserPassword(request.Email, request.PasswordResetToken, request.Password, request.PasswordConfirmation)
 	if err != nil {
-		return nil, PrintAndUnwrapError(err)
+		return nil, LogAndUnwrapError(err)
 	}
 
 	// TODO Return actual status
@@ -102,18 +101,18 @@ func (s *GRPCServer) CreateSession(_ context.Context, request *proto.CreateSessi
 	usersService := services.NewUserService(s.dao)
 	user, err := usersService.ValidateEmailAndPassword(request.Email, request.Password)
 	if err != nil {
-		return nil, PrintAndUnwrapError(err)
+		return nil, LogAndUnwrapError(err)
 	}
 
 	sessionService := services.NewSessionService(db.NewRepo(s.dao.DB))
 	session, err := sessionService.CreateSession(user.Uuid, request.ScopeGroupings)
 	if err != nil {
-		return nil, PrintAndUnwrapError(err)
+		return nil, LogAndUnwrapError(err)
 	}
 
 	json, err := services.DecodeTokenToJson(session.Token)
 	if err != nil {
-		return nil, PrintAndUnwrapError(err)
+		return nil, LogAndUnwrapError(err)
 	}
 
 	// TODO Return actual status
@@ -124,12 +123,12 @@ func (s *GRPCServer) GetSession(_ context.Context, request *proto.GetSessionRequ
 	repo := db.NewRepo(s.dao.DB)
 	session, err := repo.GetSessionWithToken(request.Token)
 	if err != nil {
-		return nil, PrintAndUnwrapError(err)
+		return nil, LogAndUnwrapError(err)
 	}
 
-	json, err := session_representations.DecodeTokenToJson(session.Token)
+	json, err := services.DecodeTokenToJson(session.Token)
 	if err != nil {
-		return nil, PrintAndUnwrapError(err)
+		return nil, LogAndUnwrapError(err)
 	}
 
 	return &proto.GetSessionResponse{Session: &proto.Session{Uuid: session.Uuid, Token: session.Token, Json: json}}, nil
@@ -142,13 +141,13 @@ func (s *GRPCServer) DeleteSession(_ context.Context, request *proto.DeleteSessi
 	case *proto.DeleteSessionRequest_Uuid:
 		err := repo.DeleteSessionWithUUID(representation.Uuid)
 		if err != nil {
-			return nil, PrintAndUnwrapError(err)
+			return nil, LogAndUnwrapError(err)
 		}
 		return &proto.DeleteSessionResponse{}, nil
 	case *proto.DeleteSessionRequest_Token:
 		err := repo.DeleteSessionWithToken(representation.Token)
 		if err != nil {
-			return nil, PrintAndUnwrapError(err)
+			return nil, LogAndUnwrapError(err)
 		}
 		return &proto.DeleteSessionResponse{}, nil
 	}
@@ -160,13 +159,13 @@ func (s *GRPCServer) DeleteUser(_ context.Context, request *proto.DeleteUserRequ
 	usersService := services.NewUserService(s.dao)
 	err := usersService.DeleteUser(request.Email, request.Password)
 	if err != nil {
-		return nil, PrintAndUnwrapError(err)
+		return nil, LogAndUnwrapError(err)
 	}
 
 	return &proto.DeleteUserResponse{}, nil
 }
 
-func PrintAndUnwrapError(err error) error {
-	fmt.Printf("FATAL: %+v\n", err)
+func LogAndUnwrapError(err error) error {
+	log.Printf("FATAL: %+v\n", err)
 	return errors.Cause(err)
 }
