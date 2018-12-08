@@ -13,7 +13,7 @@ var testDAO *DAO
 func TestMain(m *testing.M) {
 	gofakeit.Seed(0)
 	testDAO = ConnectToDatabase()
-	defer testDAO.Conn.Close()
+	defer testDAO.DB.Close()
 	testRepo = &Repo{Dao: testDAO}
 	code := m.Run()
 	os.Exit(code)
@@ -26,7 +26,7 @@ func createEncryptedPassword() string {
 }
 
 func createTestUser(isGuest bool) *User {
-	tx, _ := testDAO.Conn.Begin()
+	tx, _ := testDAO.DB.Begin()
 	user, _ := testRepo.CreateUser(tx, gofakeit.Email(), createEncryptedPassword(), isGuest)
 	tx.Commit()
 	return user
@@ -34,7 +34,7 @@ func createTestUser(isGuest bool) *User {
 
 func TestRepoCreateUser(t *testing.T) {
 	email := gofakeit.Email()
-	tx, _ := testDAO.Conn.Begin()
+	tx, _ := testDAO.DB.Begin()
 	user, err := testRepo.CreateUser(tx, email, createEncryptedPassword(), false)
 	if err != nil {
 		t.Fatal(err)
@@ -47,7 +47,7 @@ func TestRepoCreateUser(t *testing.T) {
 
 func TestRepoGetUser(t *testing.T) {
 	testUser := createTestUser(false)
-	tx, _ := testDAO.Conn.Begin()
+	tx, _ := testDAO.DB.Begin()
 	gotUser, err := testRepo.GetUserWithUUIDUsingTx(tx, testUser.Uuid)
 	if err != nil {
 		t.Fatal(err)

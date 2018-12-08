@@ -353,6 +353,7 @@
     "github.com/lib/pq",
     "github.com/mitchellh/go-homedir",
     "github.com/o1egl/paseto",
+    "github.com/pkg/errors",
     "github.com/rubenv/sql-migrate",
     "github.com/spf13/cobra",
     "github.com/spf13/viper",

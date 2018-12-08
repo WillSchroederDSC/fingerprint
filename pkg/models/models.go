@@ -1,4 +1,4 @@
-package db
+package models
 
 import (
 	"github.com/golang/protobuf/ptypes"
@@ -54,9 +54,14 @@ func (sg *ScopeGrouping) ConvertToProtobuff() (*proto.ScopeGrouping, error) {
 	}, nil
 }
 
-type PasswordResets struct {
+type PasswordReset struct {
 	Uuid       string
 	UserUuid   int
 	Token      string
 	Expiration time.Time
+}
+
+type SessionRepresentation struct {
+	Token string
+	Json  string
 }

@@ -8,6 +8,7 @@ service FingerprintService {
     rpc GetUser (GetUserRequest) returns (GetUserResponse) {}
     rpc CreateUser (CreateUserRequest) returns (CreateUserResponse) {}
     rpc CreateGuestUser (CreateGuestUserRequest) returns (CreateGuestUserResponse) {}
+    rpc DeleteUser (DeleteUserRequest) returns (DeleteUserResponse) {}
 
     rpc CreatePasswordResetToken (CreatePasswordResetTokenRequest) returns (CreatePasswordResetTokenResponse) {}
     rpc UpdateUserPassword (ResetUserPasswordRequest) returns (ResetUserPasswordResponse) {}
@@ -59,7 +60,12 @@ message CreateSessionRequest {
 }
 
 message CreateSessionResponse {
-    Session session = 1;
+    enum Status {
+        SUCCESSFUL = 0;
+        PASSWORD_MISMATCH = 1;
+    }
+    Status status = 1;
+    Session session = 2;
 }
 
 message CreatePasswordResetTokenRequest {
@@ -95,7 +101,6 @@ message DeleteSessionRequest {
 }
 
 message DeleteSessionResponse {
-    bool successful = 1;
 }
 
 message GetSessionRequest {
@@ -105,6 +110,15 @@ message GetSessionRequest {
 message GetSessionResponse {
     Session session = 1;
 }
+
+message DeleteUserRequest {
+    string email = 1;
+    string password = 2;
+}
+
+message DeleteUserResponse {
+}
+
 
 // Base Types
 
