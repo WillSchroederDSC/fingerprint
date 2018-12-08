@@ -1,9 +1,8 @@
 Make all queries respect expiration dates
 Make sure that certain commands cant be executed on guest users
-Correct error handling
-Delete user
-Quality testing setup w/ testify with db wipe
 Respect GRPC enums, and handle not found cases in repo instead of returning SQL errors
+Switch timestamp conversions to use Util
+Quality testing setup w/ testify with db wipe
 Build cleaner
 Move cobra things like migrate to db
 Allow configuration for commands, fill out cobra text, allow secret to be set

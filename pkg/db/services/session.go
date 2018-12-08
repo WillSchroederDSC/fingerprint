@@ -16,8 +16,28 @@ func NewSessionService(repo *db.Repo) *SessionService {
 	return &SessionService{repo: repo}
 }
 
-func (ss *SessionService) CreateSession(userUUID string) (*models.Session, error) {
+func (ss *SessionService) CreateSession(userUUID string, groupings []*proto.ScopeGrouping) (*models.Session, error) {
 	session, err := ss.repo.CreateSession(userUUID)
+	if err != nil {
+		return nil, err
+	}
+
+	scopeGroupings, err := ss.createScopeGroupings(session.Uuid, groupings)
+	if err != nil {
+		return nil, err
+	}
+
+	representationsService := NewSessionRepresentationService(userUUID, session.Uuid)
+	for _, sg := range scopeGroupings {
+		representationsService.AddScopeGrouping(sg.Scopes, sg.Expiration)
+	}
+
+	representation, err := representationsService.GenerateSession()
+	if err != nil {
+		return nil, err
+	}
+
+	err = ss.addTokenToSession(session.Uuid, representation.Token)
 	if err != nil {
 		return nil, err
 	}
@@ -25,7 +45,7 @@ func (ss *SessionService) CreateSession(userUUID string) (*models.Session, error
 	return session, nil
 }
 
-func (ss *SessionService) AddTokenToSession(sessionUUID string, token string) error {
+func (ss *SessionService) addTokenToSession(sessionUUID string, token string) error {
 	err := ss.repo.UpdateSessionToken(sessionUUID, token)
 	if err != nil {
 		return err
@@ -34,7 +54,7 @@ func (ss *SessionService) AddTokenToSession(sessionUUID string, token string) er
 	return nil
 }
 
-func (ss *SessionService) BuildScopeGroupings(sessionUUID string, protoScopeGroupings []*proto.ScopeGrouping) ([]*models.ScopeGrouping, error) {
+func (ss *SessionService) createScopeGroupings(sessionUUID string, protoScopeGroupings []*proto.ScopeGrouping) ([]*models.ScopeGrouping, error) {
 	scopeGroupings := make([]*models.ScopeGrouping, len(protoScopeGroupings))
 	for i, sg := range protoScopeGroupings {
 		exp, err := ptypes.Timestamp(sg.Expiration)

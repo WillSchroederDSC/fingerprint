@@ -18,6 +18,21 @@ func NewUserService(dao *db.DAO) *UserService {
 	return &UserService{dao: dao}
 }
 
+func (us *UserService) ValidateEmailAndPassword(email string, password string) (*models.User, error) {
+	repo := db.NewRepo(us.dao.DB)
+	user, err := repo.GetUserWithEmail(email)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = validPasswordProvided(user, password)
+	if err != nil {
+		return nil, err
+	}
+
+	return user, nil
+}
+
 func (us *UserService) CreateUser(request *proto.CreateUserRequest) (*models.User, *models.Session, error) {
 	hashedPassword, err := confirmPasswordAndHash(request.Password, request.PasswordConfirmation)
 	if err != nil {
@@ -36,7 +51,8 @@ func (us *UserService) CreateUser(request *proto.CreateUserRequest) (*models.Use
 		return nil, nil, err
 	}
 
-	session, err := buildSession(repo, user.Uuid, request.ScopeGroupings)
+	sessionService := NewSessionService(repo)
+	session, err := sessionService.CreateSession(user.Uuid, request.ScopeGroupings)
 	if err != nil {
 		db.HandleRollback(tx)
 		return nil, nil, err
@@ -51,7 +67,7 @@ func (us *UserService) CreateUser(request *proto.CreateUserRequest) (*models.Use
 }
 
 func (us *UserService) CreateGuestUser(request *proto.CreateGuestUserRequest) (*models.User, *models.Session, error) {
-	hash, err := BuildPasswordHash(util.String(16))
+	hash, err := buildPasswordHash(util.String(16))
 	if err != nil {
 		return nil, nil, err
 	}
@@ -70,7 +86,8 @@ func (us *UserService) CreateGuestUser(request *proto.CreateGuestUserRequest) (*
 		return nil, nil, err
 	}
 
-	session, err := buildSession(repo, user.Uuid, request.ScopeGroupings)
+	sessionService := NewSessionService(repo)
+	session, err := sessionService.CreateSession(user.Uuid, request.ScopeGroupings)
 	if err != nil {
 		db.HandleRollback(tx)
 		return nil, nil, err
@@ -135,8 +152,25 @@ func (us *UserService) CreatePasswordResetToken(email string, expiration time.Ti
 	return resetToken, nil
 }
 
-func (us *UserService) DeleteUser() error {
-	panic("build me")
+func (us *UserService) DeleteUser(email string, password string) error {
+	repo := db.NewRepo(us.dao.DB)
+
+	user, err := repo.GetUserWithEmail(email)
+	if err != nil {
+		return err
+	}
+
+	_, err = validPasswordProvided(user, password)
+	if err != nil {
+		return err
+	}
+
+	err = repo.DeleteUser(email)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func confirmPasswordAndHash(password string, passwordConfirmation string) (string, error) {
@@ -144,7 +178,7 @@ func confirmPasswordAndHash(password string, passwordConfirmation string) (strin
 		return "", errors.New("password and confirmation don't match")
 	}
 
-	hash, err := BuildPasswordHash(password)
+	hash, err := buildPasswordHash(password)
 	if err != nil {
 		return "", err
 	}
@@ -152,7 +186,7 @@ func confirmPasswordAndHash(password string, passwordConfirmation string) (strin
 	return hash, nil
 }
 
-func BuildPasswordHash(password string) (string, error) {
+func buildPasswordHash(password string) (string, error) {
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return "", errors.Wrap(err, "failed to encrypt password")
@@ -161,32 +195,15 @@ func BuildPasswordHash(password string) (string, error) {
 	return string(hash), nil
 }
 
-func buildSession(repo * db.Repo, userUUID string, groupings []*proto.ScopeGrouping) (*models.Session, error) {
-	sessionService := NewSessionService(repo)
-	session, err := sessionService.CreateSession(userUUID)
+func validPasswordProvided(user *models.User, password string) (bool, error) {
+	hashedPassword, err := buildPasswordHash(password)
 	if err != nil {
-		return nil, err
+		return false, err
 	}
 
-	scopeGroupings, err := sessionService.BuildScopeGroupings(session.Uuid, groupings)
-	if err != nil {
-		return nil, err
+	if user.EncryptedPassword != hashedPassword {
+		return false, errors.New("provided password incorrect")
 	}
 
-	representationsService := NewSessionRepresentationService(userUUID, session.Uuid)
-	for _, sg := range scopeGroupings {
-		representationsService.AddScopeGrouping(sg.Scopes, sg.Expiration)
-	}
-
-	representation, err := representationsService.GenerateSession()
-	if err != nil {
-		return nil, err
-	}
-
-	err = sessionService.AddTokenToSession(session.Uuid, representation.Token)
-	if err != nil {
-		return nil, err
-	}
-
-	return session, nil
+	return true, nil
 }

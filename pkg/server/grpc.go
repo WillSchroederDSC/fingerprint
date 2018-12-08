@@ -99,56 +99,25 @@ func (s *GRPCServer) UpdateUserPassword(_ context.Context, request *proto.ResetU
 }
 
 func (s *GRPCServer) CreateSession(_ context.Context, request *proto.CreateSessionRequest) (*proto.CreateSessionResponse, error) {
-	//repo := db.NewRepo(s.dao.DB)
-	//
-	//user, err := repo.GetUserWithEmail(request.Email)
-	//if err != nil {
-	//	return nil, PrintAndUnwrapError(err)
-	//}
-	//
-	//hash, err := services.BuildPasswordHash(request.Password)
-	//if err != nil {
-	//	return nil, PrintAndUnwrapError(err)
-	//}
-	//
-	//// TODO this check should be moved to the user service
-	//if hash != user.EncryptedPassword {
-	//	return nil, errors.New("incorrect password")
-	//}
-	//
-	//sessionService := services.NewSessionService(db.NewRepo(s.dao.DB))
-	//sessionService.CreateSession(user.Uuid)
-	//
-	//tx, err := s.dao.DB.Begin()
-	//if err != nil {
-	//	panic(err)
-	//}
-	//
-	//sessionUUID := uuid.New().String()
-	//sessionToken, json, err := s.actions.buildSessionRepresentation(user, sessionUUID, request.ScopeGroupings)
-	//if err != nil {
-	//	tx.Rollback()
-	//	panic(err)
-	//}
-	//
-	//session, err := s.actions.buildSession(tx, sessionUUID, user.Uuid, sessionToken)
-	//if err != nil {
-	//	tx.Rollback()
-	//	panic(err)
-	//}
-	//
-	//_, err = s.actions.buildScopeGroupings(tx, request.ScopeGroupings, session.Uuid)
-	//if err != nil {
-	//	tx.Rollback()
-	//	panic(err)
-	//}
-	//
-	//err = tx.Commit()
-	//if err != nil {
-	//	panic(err)
-	//}
-	//return &proto.CreateSessionResponse{Session: &proto.Session{Uuid: session.Uuid, Token: sessionToken, Json: json}}, nil
-	panic("not yet")
+	usersService := services.NewUserService(s.dao)
+	user, err := usersService.ValidateEmailAndPassword(request.Email, request.Password)
+	if err != nil {
+		return nil, PrintAndUnwrapError(err)
+	}
+
+	sessionService := services.NewSessionService(db.NewRepo(s.dao.DB))
+	session, err := sessionService.CreateSession(user.Uuid,request.ScopeGroupings)
+	if err != nil {
+		return nil, PrintAndUnwrapError(err)
+	}
+
+	json, err  := services.DecodeTokenToJson(session.Token)
+	if err != nil {
+		return nil, PrintAndUnwrapError(err)
+	}
+
+	// TODO Return actual status
+	return &proto.CreateSessionResponse{Status:proto.CreateSessionResponse_SUCCESSFUL, Session: &proto.Session{Uuid: session.Uuid, Token: session.Token, Json: json}}, nil
 }
 
 func (s *GRPCServer) GetSession(_ context.Context, request *proto.GetSessionRequest) (*proto.GetSessionResponse, error) {
@@ -175,16 +144,26 @@ func (s *GRPCServer) DeleteSession(_ context.Context, request *proto.DeleteSessi
 		if err != nil {
 			return nil, PrintAndUnwrapError(err)
 		}
-		return &proto.DeleteSessionResponse{Successful: true}, nil
+		return &proto.DeleteSessionResponse{}, nil
 	case *proto.DeleteSessionRequest_Token:
 		err := repo.DeleteSessionWithToken(representation.Token)
 		if err != nil {
 			return nil, PrintAndUnwrapError(err)
 		}
-		return &proto.DeleteSessionResponse{Successful: true}, nil
+		return &proto.DeleteSessionResponse{}, nil
 	}
 
-	return &proto.DeleteSessionResponse{Successful: false}, nil
+	return &proto.DeleteSessionResponse{}, nil
+}
+
+func (s *GRPCServer) DeleteUser(_ context.Context, request *proto.DeleteUserRequest) (*proto.DeleteUserResponse, error) {
+	usersService := services.NewUserService(s.dao)
+	err := usersService.DeleteUser(request.Email, request.Password)
+	if err != nil {
+		return nil, PrintAndUnwrapError(err)
+	}
+
+	return &proto.DeleteUserResponse{}, nil
 }
 
 func PrintAndUnwrapError(err error) error {

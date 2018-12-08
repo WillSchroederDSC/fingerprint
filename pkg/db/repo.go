@@ -242,3 +242,13 @@ func (r *Repo) DeleteAllPasswordResetTokensForUser(userUUID string) error {
 
 	return nil
 }
+
+func (r *Repo) DeleteUser(email string) error {
+	sqlStatement := "DELETE FROM users WHERE email=$1"
+	_, err := r.exec(sqlStatement, email)
+	if err != nil {
+		return errors.Wrap(err, "failed to delete user")
+	}
+
+	return nil
+}
