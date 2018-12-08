@@ -2,8 +2,8 @@ package session_representations
 
 import (
 	"encoding/json"
-	"github.com/pkg/errors"
 	"github.com/o1egl/paseto"
+	"github.com/pkg/errors"
 	"time"
 )
 

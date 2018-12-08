@@ -99,4 +99,3 @@ func DecodeTokenToJson(sessionToken string) (string, error) {
 	}
 	return token, nil
 }
-

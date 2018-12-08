@@ -23,7 +23,6 @@ func NewRepoUsingTransaction(tx *sql.Tx) *Repo {
 	return &Repo{tx: tx}
 }
 
-
 func (r *Repo) exec(query string, args ...interface{}) (sql.Result, error) {
 	if r.tx != nil {
 		return r.tx.Exec(query)

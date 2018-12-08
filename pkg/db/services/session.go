@@ -71,4 +71,3 @@ func (ss *SessionService) createScopeGroupings(sessionUUID string, protoScopeGro
 
 	return scopeGroupings, nil
 }
-

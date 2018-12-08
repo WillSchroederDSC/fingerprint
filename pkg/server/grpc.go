@@ -12,7 +12,7 @@ import (
 import "context"
 
 type GRPCServer struct {
-	dao     *db.DAO
+	dao *db.DAO
 }
 
 func NewGRPCServer(dao *db.DAO) *GRPCServer {
@@ -27,7 +27,7 @@ func (s *GRPCServer) CreateUser(_ context.Context, request *proto.CreateUserRequ
 		return nil, PrintAndUnwrapError(err)
 	}
 
-	json, err  := services.DecodeTokenToJson(session.Token)
+	json, err := services.DecodeTokenToJson(session.Token)
 	if err != nil {
 		return nil, PrintAndUnwrapError(err)
 	}
@@ -43,7 +43,7 @@ func (s *GRPCServer) CreateGuestUser(_ context.Context, request *proto.CreateGue
 		return nil, PrintAndUnwrapError(err)
 	}
 
-	json, err  := services.DecodeTokenToJson(session.Token)
+	json, err := services.DecodeTokenToJson(session.Token)
 	if err != nil {
 		return nil, PrintAndUnwrapError(err)
 	}
@@ -106,18 +106,18 @@ func (s *GRPCServer) CreateSession(_ context.Context, request *proto.CreateSessi
 	}
 
 	sessionService := services.NewSessionService(db.NewRepo(s.dao.DB))
-	session, err := sessionService.CreateSession(user.Uuid,request.ScopeGroupings)
+	session, err := sessionService.CreateSession(user.Uuid, request.ScopeGroupings)
 	if err != nil {
 		return nil, PrintAndUnwrapError(err)
 	}
 
-	json, err  := services.DecodeTokenToJson(session.Token)
+	json, err := services.DecodeTokenToJson(session.Token)
 	if err != nil {
 		return nil, PrintAndUnwrapError(err)
 	}
 
 	// TODO Return actual status
-	return &proto.CreateSessionResponse{Status:proto.CreateSessionResponse_SUCCESSFUL, Session: &proto.Session{Uuid: session.Uuid, Token: session.Token, Json: json}}, nil
+	return &proto.CreateSessionResponse{Status: proto.CreateSessionResponse_SUCCESSFUL, Session: &proto.Session{Uuid: session.Uuid, Token: session.Token, Json: json}}, nil
 }
 
 func (s *GRPCServer) GetSession(_ context.Context, request *proto.GetSessionRequest) (*proto.GetSessionResponse, error) {
