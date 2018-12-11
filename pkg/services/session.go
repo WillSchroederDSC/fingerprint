@@ -41,6 +41,7 @@ func (ss *SessionService) CreateSession(userUUID string, groupings []*proto.Scop
 	if err != nil {
 		return nil, err
 	}
+	session.Token = representation.Token
 
 	return session, nil
 }

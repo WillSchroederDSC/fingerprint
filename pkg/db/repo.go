@@ -25,18 +25,18 @@ func NewRepoUsingTransaction(tx *sql.Tx) *Repo {
 
 func (r *Repo) exec(query string, args ...interface{}) (sql.Result, error) {
 	if r.tx != nil {
-		return r.tx.Exec(query)
+		return r.tx.Exec(query, args...)
 	}
 
-	return r.db.Exec(query)
+	return r.db.Exec(query, args...)
 }
 
 func (r *Repo) queryRow(query string, args ...interface{}) *sql.Row {
 	if r.tx != nil {
-		return r.tx.QueryRow(query)
+		return r.tx.QueryRow(query, args...)
 	}
 
-	return r.db.QueryRow(query)
+	return r.db.QueryRow(query, args...)
 }
 
 func (r *Repo) CreateUser(email string, encryptedPassword string, isGuest bool) (*models.User, error) {
