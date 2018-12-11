@@ -55,28 +55,41 @@ func TestGRPCServer_CreateUser(t *testing.T) {
 			name:   "creates a new user",
 			fields: fields{testDAO},
 			args: args{in0: context.Background(), request: &proto.CreateUserRequest{
-				Email: gofakeit.Email(), Password: "test", PasswordConfirmation: "test", ScopeGroupings: scopeGroupings },
+				Email: gofakeit.Email(), Password: "test", PasswordConfirmation: "test", ScopeGroupings: scopeGroupings},
 			},
 			wantErr: false,
 		},
+		{
+			name:   "wont create a new user with mismatching password confirmation",
+			fields: fields{testDAO},
+			args: args{in0: context.Background(), request: &proto.CreateUserRequest{
+				Email: gofakeit.Email(), Password: "test", PasswordConfirmation: "wrong", ScopeGroupings: scopeGroupings},
+			},
+			wantErr: true,
+		},
 	}
-	for _, tt := range tests{
-		t.Run(tt.name, func (t *testing.T){
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
 			s := &GRPCServer{
 				dao: tt.fields.dao,
 			}
 			got, err := s.CreateUser(tt.args.in0, tt.args.request)
-			if (err != nil) != tt.wantErr{
+			if err != nil && tt.wantErr {
+				return
+			}
+			if (err != nil) != tt.wantErr {
 				t.Errorf("GRPCServer.CreateUser() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if got.User.Uuid == "" || got.Session.Uuid == "" || got.User.Email == "" {
 				t.Error("User was not created with email")
 			}
+			if got.Session.Token == "" || got.Session.Json == "" {
+				t.Error("didn't generate session representations")
+			}
 		})
 	}
 }
-
 
 func TestGRPCServer_CreateGuestUser(t *testing.T) {
 	type fields struct {
