@@ -42,7 +42,7 @@ func (r *Repo) queryRow(query string, args ...interface{}) *sql.Row {
 func (r *Repo) CreateUser(email string, encryptedPassword string, isGuest bool) (*models.User, error) {
 	userUUID := uuid.New().String()
 
-	sqlStatement := "INSERT INTO users (Uuid, email, encrypted_password, is_guest, updated_at, created_at) VALUES ($1, $2, $3, $4, $5, $6)"
+	sqlStatement := "INSERT INTO users (uuid, email, encrypted_password, is_guest, updated_at, created_at) VALUES ($1, $2, $3, $4, $5, $6)"
 	_, err := r.exec(sqlStatement, userUUID, email, encryptedPassword, isGuest, time.Now().UTC(), time.Now().UTC())
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create new user")
@@ -57,7 +57,7 @@ func (r *Repo) CreateUser(email string, encryptedPassword string, isGuest bool) 
 }
 
 func (r *Repo) GetUserWithUUID(userUUID string) (*models.User, error) {
-	sqlStatement := "SELECT Uuid,email,encrypted_password,is_guest FROM users WHERE Uuid=$1"
+	sqlStatement := "SELECT uuid,email,encrypted_password,is_guest FROM users WHERE uuid=$1"
 
 	row := r.queryRow(sqlStatement, userUUID)
 	var user models.User
@@ -80,7 +80,7 @@ func (r *Repo) UpdateUserPassword(email string, encryptedPassword string) error 
 }
 
 func (r *Repo) GetUserWithEmail(email string) (*models.User, error) {
-	sqlStatement := "SELECT Uuid,email,encrypted_password,is_guest FROM users WHERE email=$1"
+	sqlStatement := "SELECT uuid,email,encrypted_password,is_guest FROM users WHERE email=$1"
 
 	row := r.queryRow(sqlStatement, email)
 	var user models.User
@@ -95,7 +95,7 @@ func (r *Repo) GetUserWithEmail(email string) (*models.User, error) {
 func (r *Repo) CreateSession(userUUID string) (*models.Session, error) {
 	sessionUUID := uuid.New().String()
 
-	sqlStatement := "INSERT INTO sessions (Uuid, user_uuid, token, created_at) VALUES ($1, $2, $3, $4)"
+	sqlStatement := "INSERT INTO sessions (uuid, user_uuid, token, created_at) VALUES ($1, $2, $3, $4)"
 	_, err := r.exec(sqlStatement, sessionUUID, userUUID, "TEMP", time.Now().UTC())
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create session")
@@ -110,7 +110,7 @@ func (r *Repo) CreateSession(userUUID string) (*models.Session, error) {
 }
 
 func (r *Repo) GetSessionWithUUID(sessionUUID string) (*models.Session, error) {
-	sqlStatement := "SELECT Uuid,token FROM sessions WHERE Uuid=$1"
+	sqlStatement := "SELECT uuid,token FROM sessions WHERE uuid=$1"
 
 	row := r.queryRow(sqlStatement, sessionUUID)
 	var session models.Session
@@ -123,7 +123,7 @@ func (r *Repo) GetSessionWithUUID(sessionUUID string) (*models.Session, error) {
 }
 
 func (r *Repo) GetSessionWithToken(token string) (*models.Session, error) {
-	sqlStatement := "SELECT Uuid,token FROM sessions WHERE token=$1"
+	sqlStatement := "SELECT uuid,token FROM sessions WHERE token=$1"
 
 	row := r.queryRow(sqlStatement, token)
 	var session models.Session
@@ -138,7 +138,7 @@ func (r *Repo) GetSessionWithToken(token string) (*models.Session, error) {
 func (r *Repo) CreateScopeGrouping(sessionUUID string, scopes []string, expiration time.Time) (*models.ScopeGrouping, error) {
 	groupingUUID := uuid.New().String()
 
-	sqlStatement := "INSERT INTO scope_groupings (Uuid, session_uuid, scopes, expiration, created_at) VALUES ($1, $2, $3, $4, $5)"
+	sqlStatement := "INSERT INTO scope_groupings (uuid, session_uuid, scopes, expiration, created_at) VALUES ($1, $2, $3, $4, $5)"
 	_, err := r.exec(sqlStatement, groupingUUID, sessionUUID, pq.Array(scopes), expiration, time.Now().UTC())
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create scope grouping")
@@ -153,7 +153,7 @@ func (r *Repo) CreateScopeGrouping(sessionUUID string, scopes []string, expirati
 }
 
 func (r *Repo) GetScopeGroupingWithUUID(groupingUUID string) (*models.ScopeGrouping, error) {
-	sqlStatement := "SELECT Uuid,scopes,expiration FROM scope_groupings WHERE Uuid=$1"
+	sqlStatement := "SELECT uuid,scopes,expiration FROM scope_groupings WHERE uuid=$1"
 	row := r.queryRow(sqlStatement, groupingUUID)
 	var sg models.ScopeGrouping
 	err := row.Scan(&sg.Uuid, pq.Array(&sg.Scopes), &sg.Expiration)
@@ -176,7 +176,7 @@ func (r *Repo) UpdateSessionToken(sessionUUID string, token string) error {
 }
 
 func (r *Repo) DeleteSessionWithUUID(sessionUUID string) error {
-	sqlStatement := "DELETE FROM sessions WHERE Uuid=$1"
+	sqlStatement := "DELETE FROM sessions WHERE uuid=$1"
 	_, err := r.exec(sqlStatement, sessionUUID)
 	if err != nil {
 		return errors.Wrap(err, "failed to delete session")
@@ -195,14 +195,14 @@ func (r *Repo) DeleteSessionWithToken(token string) error {
 
 func (r *Repo) CreatePasswordResetToken(userUUID string, expiration time.Time) (*models.PasswordReset, error) {
 	resetUUID := uuid.New().String()
-	newResetToken := util.String(16)
-	sqlStatement := "INSERT INTO password_resets (Uuid, user_uuid, token, expiration, created_at) VALUES ($1, $2, $3, $4, $5)"
+	newResetToken := util.String(32)
+	sqlStatement := "INSERT INTO password_resets (uuid, user_uuid, token, expiration, created_at) VALUES ($1, $2, $3, $4, $5)"
 	_, err := r.exec(sqlStatement, resetUUID, userUUID, newResetToken, expiration, time.Now().UTC())
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create password reset")
 	}
 
-	prt, err := r.GetPasswordResetToken(resetUUID)
+	prt, err := r.GetPasswordResetToken(newResetToken)
 	if err != nil {
 		return nil, err
 	}
@@ -211,7 +211,7 @@ func (r *Repo) CreatePasswordResetToken(userUUID string, expiration time.Time) (
 }
 
 func (r *Repo) GetPasswordResetToken(token string) (*models.PasswordReset, error) {
-	sqlStatement := "SELECT Uuid,user_uuid,token,expiration FROM password_resets WHERE token=$1"
+	sqlStatement := "SELECT uuid,user_uuid,token,expiration FROM password_resets WHERE token=$1"
 	row := r.queryRow(sqlStatement, token)
 	var t models.PasswordReset
 	err := row.Scan(&t.Uuid, &t.UserUuid, &t.Token, &t.Expiration)
@@ -223,7 +223,7 @@ func (r *Repo) GetPasswordResetToken(token string) (*models.PasswordReset, error
 }
 
 func (r *Repo) DeletePasswordResetToken(resetUUID string) error {
-	sqlStatement := "DELETE FROM password_resets WHERE Uuid=$1"
+	sqlStatement := "DELETE FROM password_resets WHERE uuid=$1"
 	_, err := r.exec(sqlStatement, resetUUID)
 	if err != nil {
 		return errors.Wrap(err, "failed to delete password reset")
@@ -233,7 +233,7 @@ func (r *Repo) DeletePasswordResetToken(resetUUID string) error {
 }
 
 func (r *Repo) DeleteAllPasswordResetTokensForUser(userUUID string) error {
-	sqlStatement := "DELETE FROM password_reset_tokens WHERE user_uuid=$1"
+	sqlStatement := "DELETE FROM password_resets WHERE user_uuid=$1"
 	_, err := r.exec(sqlStatement, userUUID)
 	if err != nil {
 		return errors.Wrap(err, "failed to delete password reset")

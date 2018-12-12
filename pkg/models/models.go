@@ -24,7 +24,7 @@ func (u *User) ConvertToProtobuff() *proto.User {
 type Session struct {
 	Uuid   string
 	Token  string
-	UserId int
+	UserUuid string
 }
 
 func (s *Session) ConvertToProtobuff(json string) *proto.Session {
@@ -37,7 +37,7 @@ func (s *Session) ConvertToProtobuff(json string) *proto.Session {
 
 type ScopeGrouping struct {
 	Uuid        string
-	SessionUuid int
+	SessionUuid string
 	Scopes      []string
 	Expiration  time.Time
 }
@@ -56,7 +56,7 @@ func (sg *ScopeGrouping) ConvertToProtobuff() (*proto.ScopeGrouping, error) {
 
 type PasswordReset struct {
 	Uuid       string
-	UserUuid   int
+	UserUuid   string
 	Token      string
 	Expiration time.Time
 }

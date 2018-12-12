@@ -1,4 +1,4 @@
-Remove transactions out of the repo
+Remove DB connection out of DAO object??
 Make all queries respect expiration dates
 Make sure that certain commands cant be executed on guest users
 Respect GRPC enums, and handle not found cases in repo instead of returning SQL errors
@@ -10,4 +10,5 @@ Create DB bash script, any other setup
 Update README, reminder to store token in cookie, not in local storage, otherwise venerable to session hijack
 Write a ton of tests
 Redis session caching
-Docker build for go, google search it, or some kind of jetbrains auto build?
+Resolve any last todos in code
+Docker build for go, google search it, or some kind of jetbrains auto build? Circle CI

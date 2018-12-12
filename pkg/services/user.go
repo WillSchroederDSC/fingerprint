@@ -196,12 +196,8 @@ func buildPasswordHash(password string) (string, error) {
 }
 
 func validPasswordProvided(user *models.User, password string) (bool, error) {
-	hashedPassword, err := buildPasswordHash(password)
+	err := bcrypt.CompareHashAndPassword([]byte(user.EncryptedPassword), []byte(password))
 	if err != nil {
-		return false, err
-	}
-
-	if user.EncryptedPassword != hashedPassword {
 		return false, errors.New("provided password incorrect")
 	}
 

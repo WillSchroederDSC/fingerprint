@@ -4,8 +4,8 @@ import (
 	"context"
 	"github.com/brianvoe/gofakeit"
 	"github.com/golang/protobuf/ptypes"
+	"github.com/golang/protobuf/ptypes/timestamp"
 	"os"
-	"reflect"
 	"testing"
 	"time"
 
@@ -14,30 +14,50 @@ import (
 )
 
 var testDAO *db.DAO
+var testGRPCServer *GRPCServer
 
 func TestMain(m *testing.M) {
 	gofakeit.Seed(0)
 	testDAO = db.ConnectToDatabase()
 	defer testDAO.DB.Close()
+	testGRPCServer = NewGRPCServer(testDAO)
 	code := m.Run()
-	_, _ = testDAO.DB.Exec("TRUNCATE users CASCADE")
+	//_, _ = testDAO.DB.Exec("TRUNCATE users CASCADE")
 	os.Exit(code)
 }
 
-func TestGRPCServer_CreateUser(t *testing.T) {
+func timestampOneHour() *timestamp.Timestamp {
 	oneHour, _ := ptypes.TimestampProto(time.Now().Add(time.Hour * time.Duration(1)))
-	twoHour, _ := ptypes.TimestampProto(time.Now().Add(time.Hour * time.Duration(2)))
-	scopeGroupings := []*proto.ScopeGrouping{
+	return oneHour
+}
+
+func timestampTwoHour() *timestamp.Timestamp {
+	oneHour, _ := ptypes.TimestampProto(time.Now().Add(time.Hour * time.Duration(2)))
+	return oneHour
+}
+
+func twoScopeGroupings() []*proto.ScopeGrouping {
+	return []*proto.ScopeGrouping{
 		{
 			Scopes:     []string{"read"},
-			Expiration: oneHour,
+			Expiration: timestampTwoHour(),
 		},
 		{
 			Scopes:     []string{"write"},
-			Expiration: twoHour,
+			Expiration: timestampOneHour(),
 		},
 	}
+}
 
+func buildTestUser(password string) *proto.CreateUserResponse {
+	usr, _ := testGRPCServer.CreateUser(context.Background(), &proto.CreateUserRequest{
+		Email: gofakeit.Email(), Password: password, PasswordConfirmation: password, ScopeGroupings: twoScopeGroupings()})
+
+	return usr
+}
+
+func TestGRPCServer_CreateUser(t *testing.T) {
+	password := gofakeit.Password(true, true, true, true, true, 10)
 	type fields struct {
 		dao *db.DAO
 	}
@@ -55,7 +75,7 @@ func TestGRPCServer_CreateUser(t *testing.T) {
 			name:   "creates a new user",
 			fields: fields{testDAO},
 			args: args{in0: context.Background(), request: &proto.CreateUserRequest{
-				Email: gofakeit.Email(), Password: "test", PasswordConfirmation: "test", ScopeGroupings: scopeGroupings},
+				Email: gofakeit.Email(), Password: password, PasswordConfirmation: password, ScopeGroupings: twoScopeGroupings()},
 			},
 			wantErr: false,
 		},
@@ -63,7 +83,7 @@ func TestGRPCServer_CreateUser(t *testing.T) {
 			name:   "wont create a new user with mismatching password confirmation",
 			fields: fields{testDAO},
 			args: args{in0: context.Background(), request: &proto.CreateUserRequest{
-				Email: gofakeit.Email(), Password: "test", PasswordConfirmation: "wrong", ScopeGroupings: scopeGroupings},
+				Email: gofakeit.Email(), Password: password, PasswordConfirmation: "wrong", ScopeGroupings: twoScopeGroupings()},
 			},
 			wantErr: true,
 		},
@@ -75,10 +95,6 @@ func TestGRPCServer_CreateUser(t *testing.T) {
 			}
 			got, err := s.CreateUser(tt.args.in0, tt.args.request)
 			if err != nil && tt.wantErr {
-				return
-			}
-			if (err != nil) != tt.wantErr {
-				t.Errorf("GRPCServer.CreateUser() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if got.User.Uuid == "" || got.Session.Uuid == "" || got.User.Email == "" {
@@ -103,10 +119,14 @@ func TestGRPCServer_CreateGuestUser(t *testing.T) {
 		name    string
 		fields  fields
 		args    args
-		want    *proto.CreateGuestUserResponse
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{
+			name:    "creates a new user",
+			fields:  fields{testDAO},
+			args:    args{in0: context.Background(), request: &proto.CreateGuestUserRequest{Email: gofakeit.Email(), ScopeGroupings: twoScopeGroupings()}},
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -118,14 +138,19 @@ func TestGRPCServer_CreateGuestUser(t *testing.T) {
 				t.Errorf("GRPCServer.CreateGuestUser() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("GRPCServer.CreateGuestUser() = %v, want %v", got, tt.want)
+			if got.User.Uuid == "" || got.Session.Uuid == "" || got.User.Email == "" {
+				t.Error("User was not created with email")
+			}
+			if got.Session.Token == "" || got.Session.Json == "" {
+				t.Error("didn't generate session representations")
 			}
 		})
 	}
 }
 
 func TestGRPCServer_GetUser(t *testing.T) {
+	testUser := buildTestUser("test")
+
 	type fields struct {
 		dao *db.DAO
 	}
@@ -137,10 +162,20 @@ func TestGRPCServer_GetUser(t *testing.T) {
 		name    string
 		fields  fields
 		args    args
-		want    *proto.GetUserResponse
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{
+			name:    "gets user using email",
+			fields:  fields{testDAO},
+			args:    args{in0: context.Background(), request: &proto.GetUserRequest{Identifier: &proto.GetUserRequest_Email{Email: testUser.User.Email}}},
+			wantErr: false,
+		},
+		{
+			name:    "gets user using uuid",
+			fields:  fields{testDAO},
+			args:    args{in0: context.Background(), request: &proto.GetUserRequest{Identifier: &proto.GetUserRequest_Uuid{Uuid: testUser.User.Uuid}}},
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -148,18 +183,20 @@ func TestGRPCServer_GetUser(t *testing.T) {
 				dao: tt.fields.dao,
 			}
 			got, err := s.GetUser(tt.args.in0, tt.args.request)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("GRPCServer.GetUser() error = %v, wantErr %v", err, tt.wantErr)
+			if err != nil && tt.wantErr {
 				return
 			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("GRPCServer.GetUser() = %v, want %v", got, tt.want)
+
+			if got.User.Email != testUser.User.Email {
+				t.Error("didn't fetch user")
 			}
 		})
 	}
 }
 
 func TestGRPCServer_CreatePasswordResetToken(t *testing.T) {
+	testUser := buildTestUser("test")
+
 	type fields struct {
 		dao *db.DAO
 	}
@@ -171,10 +208,14 @@ func TestGRPCServer_CreatePasswordResetToken(t *testing.T) {
 		name    string
 		fields  fields
 		args    args
-		want    *proto.CreatePasswordResetTokenResponse
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{
+			name:    "creates reset token",
+			fields:  fields{testDAO},
+			args:    args{in0: context.Background(), request: &proto.CreatePasswordResetTokenRequest{Email: testUser.User.Email, Expiration: timestampOneHour()}},
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -182,33 +223,47 @@ func TestGRPCServer_CreatePasswordResetToken(t *testing.T) {
 				dao: tt.fields.dao,
 			}
 			got, err := s.CreatePasswordResetToken(tt.args.in0, tt.args.request)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("GRPCServer.CreatePasswordResetToken() error = %v, wantErr %v", err, tt.wantErr)
+			if err != nil && tt.wantErr {
 				return
 			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("GRPCServer.CreatePasswordResetToken() = %v, want %v", got, tt.want)
+			if got.PasswordResetToken == "" {
+				t.Error("didn't build password reset token")
 			}
 		})
 	}
 }
 
 func TestGRPCServer_UpdateUserPassword(t *testing.T) {
+	testUser := buildTestUser("test")
+	resetTokenResp, _ := testGRPCServer.CreatePasswordResetToken(context.Background(), &proto.CreatePasswordResetTokenRequest{Email: testUser.User.Email, Expiration: timestampOneHour()})
+	resetToken := resetTokenResp.PasswordResetToken
+
 	type fields struct {
 		dao *db.DAO
 	}
 	type args struct {
 		in0     context.Context
-		request *proto.ResetUserPasswordRequest
+		request *proto.UpdateUserPasswordRequest
 	}
 	tests := []struct {
 		name    string
 		fields  fields
 		args    args
-		want    *proto.ResetUserPasswordResponse
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{
+			name:   "updates users password",
+			fields: fields{testDAO},
+			args: args{in0: context.Background(), request: &proto.UpdateUserPasswordRequest{
+				Email:                testUser.User.Email,
+				PasswordResetToken:   resetToken,
+				Password:             "test2",
+				PasswordConfirmation: "test2",
+			},
+			},
+			wantErr: false,
+		},
+		// TODO test confiming mismatched confirmation wont update
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -216,18 +271,22 @@ func TestGRPCServer_UpdateUserPassword(t *testing.T) {
 				dao: tt.fields.dao,
 			}
 			got, err := s.UpdateUserPassword(tt.args.in0, tt.args.request)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("GRPCServer.UpdateUserPassword() error = %v, wantErr %v", err, tt.wantErr)
+			if err != nil && tt.wantErr {
 				return
 			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("GRPCServer.UpdateUserPassword() = %v, want %v", got, tt.want)
+			if got.Status != proto.UpdateUserPasswordResponse_SUCCESSFUL {
+				t.Error("didn't successfully update password reset token")
 			}
+
+			//TODO Verify that the password has changed
 		})
 	}
 }
 
 func TestGRPCServer_CreateSession(t *testing.T) {
+	testUser := buildTestUser("test")
+
+
 	type fields struct {
 		dao *db.DAO
 	}
@@ -239,10 +298,15 @@ func TestGRPCServer_CreateSession(t *testing.T) {
 		name    string
 		fields  fields
 		args    args
-		want    *proto.CreateSessionResponse
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{
+			name: "creates a session",
+			fields: fields{testDAO},
+			args: args{in0: context.Background(), request: &proto.CreateSessionRequest{Email:testUser.User.Email, Password:"test", ScopeGroupings:twoScopeGroupings()},
+			},
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -250,18 +314,19 @@ func TestGRPCServer_CreateSession(t *testing.T) {
 				dao: tt.fields.dao,
 			}
 			got, err := s.CreateSession(tt.args.in0, tt.args.request)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("GRPCServer.CreateSession() error = %v, wantErr %v", err, tt.wantErr)
+			if err != nil && tt.wantErr {
 				return
 			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("GRPCServer.CreateSession() = %v, want %v", got, tt.want)
+			if got.Session.Uuid == "" || got.Session.Token == "" || got.Session.Json == "" {
+				t.Error("didn't create and return a session")
 			}
 		})
 	}
 }
 
 func TestGRPCServer_GetSession(t *testing.T) {
+	testUser := buildTestUser("test")
+
 	type fields struct {
 		dao *db.DAO
 	}
@@ -273,10 +338,15 @@ func TestGRPCServer_GetSession(t *testing.T) {
 		name    string
 		fields  fields
 		args    args
-		want    *proto.GetSessionResponse
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{
+			name: "gets a session",
+			fields: fields{testDAO},
+			args: args{in0: context.Background(), request: &proto.GetSessionRequest{Token:testUser.Session.Token},
+			},
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -284,18 +354,19 @@ func TestGRPCServer_GetSession(t *testing.T) {
 				dao: tt.fields.dao,
 			}
 			got, err := s.GetSession(tt.args.in0, tt.args.request)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("GRPCServer.GetSession() error = %v, wantErr %v", err, tt.wantErr)
+			if err != nil && tt.wantErr {
 				return
 			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("GRPCServer.GetSession() = %v, want %v", got, tt.want)
+			if got.Session.Uuid == "" || got.Session.Token == "" || got.Session.Json == "" {
+				t.Error("didn't create and return a session")
 			}
 		})
 	}
 }
 
 func TestGRPCServer_DeleteSession(t *testing.T) {
+	testUser := buildTestUser("test")
+
 	type fields struct {
 		dao *db.DAO
 	}
@@ -307,29 +378,40 @@ func TestGRPCServer_DeleteSession(t *testing.T) {
 		name    string
 		fields  fields
 		args    args
-		want    *proto.DeleteSessionResponse
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{
+			name: "deletes a session using a uuid",
+			fields: fields{testDAO},
+			args: args{in0: context.Background(), request: &proto.DeleteSessionRequest{Representation: &proto.DeleteSessionRequest_Uuid{Uuid:testUser.Session.Uuid}},
+			},
+			wantErr: false,
+		},
+		{
+			name: "deletes a session using a token",
+			fields: fields{testDAO},
+			args: args{in0: context.Background(), request: &proto.DeleteSessionRequest{Representation: &proto.DeleteSessionRequest_Token{Token:testUser.Session.Token}},
+			},
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := &GRPCServer{
 				dao: tt.fields.dao,
 			}
-			got, err := s.DeleteSession(tt.args.in0, tt.args.request)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("GRPCServer.DeleteSession() error = %v, wantErr %v", err, tt.wantErr)
+			_, err := s.DeleteSession(tt.args.in0, tt.args.request)
+			if err != nil && tt.wantErr {
 				return
 			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("GRPCServer.DeleteSession() = %v, want %v", got, tt.want)
-			}
+			// todo validate session actually deleted
 		})
 	}
 }
 
 func TestGRPCServer_DeleteUser(t *testing.T) {
+	testUser := buildTestUser("test")
+
 	type fields struct {
 		dao *db.DAO
 	}
@@ -344,21 +426,23 @@ func TestGRPCServer_DeleteUser(t *testing.T) {
 		want    *proto.DeleteUserResponse
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{
+			name: "deletes a user",
+			fields: fields{testDAO},
+			args: args{in0: context.Background(), request: &proto.DeleteUserRequest{Email:testUser.User.Email, Password:"test"},},
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := &GRPCServer{
 				dao: tt.fields.dao,
 			}
-			got, err := s.DeleteUser(tt.args.in0, tt.args.request)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("GRPCServer.DeleteUser() error = %v, wantErr %v", err, tt.wantErr)
+			_, err := s.DeleteUser(tt.args.in0, tt.args.request)
+			if err != nil && tt.wantErr {
 				return
 			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("GRPCServer.DeleteUser() = %v, want %v", got, tt.want)
-			}
+			// todo validate user actually deleted
 		})
 	}
 }

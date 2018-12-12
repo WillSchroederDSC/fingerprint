@@ -86,7 +86,7 @@ func (s *GRPCServer) CreatePasswordResetToken(_ context.Context, request *proto.
 	return &proto.CreatePasswordResetTokenResponse{PasswordResetToken: passwordReset.Token}, nil
 }
 
-func (s *GRPCServer) UpdateUserPassword(_ context.Context, request *proto.ResetUserPasswordRequest) (*proto.ResetUserPasswordResponse, error) {
+func (s *GRPCServer) UpdateUserPassword(_ context.Context, request *proto.UpdateUserPasswordRequest) (*proto.UpdateUserPasswordResponse, error) {
 	usersService := services.NewUserService(s.dao)
 	err := usersService.UpdateUserPassword(request.Email, request.PasswordResetToken, request.Password, request.PasswordConfirmation)
 	if err != nil {
@@ -94,7 +94,7 @@ func (s *GRPCServer) UpdateUserPassword(_ context.Context, request *proto.ResetU
 	}
 
 	// TODO Return actual status
-	return &proto.ResetUserPasswordResponse{Status: proto.ResetUserPasswordResponse_SUCCESSFUL}, nil
+	return &proto.UpdateUserPasswordResponse{Status: proto.UpdateUserPasswordResponse_SUCCESSFUL}, nil
 }
 
 func (s *GRPCServer) CreateSession(_ context.Context, request *proto.CreateSessionRequest) (*proto.CreateSessionResponse, error) {

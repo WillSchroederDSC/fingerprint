@@ -11,7 +11,7 @@ service FingerprintService {
     rpc DeleteUser (DeleteUserRequest) returns (DeleteUserResponse) {}
 
     rpc CreatePasswordResetToken (CreatePasswordResetTokenRequest) returns (CreatePasswordResetTokenResponse) {}
-    rpc UpdateUserPassword (ResetUserPasswordRequest) returns (ResetUserPasswordResponse) {}
+    rpc UpdateUserPassword (UpdateUserPasswordRequest) returns (UpdateUserPasswordResponse) {}
 
     rpc CreateSession (CreateSessionRequest) returns (CreateSessionResponse) {}
     rpc DeleteSession (DeleteSessionRequest) returns (DeleteSessionResponse) {}
@@ -77,14 +77,14 @@ message CreatePasswordResetTokenResponse {
     string password_reset_token = 1;
 }
 
-message ResetUserPasswordRequest {
+message UpdateUserPasswordRequest {
     string email = 1;
     string password = 2;
     string password_confirmation = 3;
     string password_reset_token = 4;
 }
 
-message ResetUserPasswordResponse {
+message UpdateUserPasswordResponse {
     enum Status {
         SUCCESSFUL = 0;
         PASSWORD_MISMATCH = 1;
