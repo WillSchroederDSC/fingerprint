@@ -1,6 +1,7 @@
 package server
 
 import (
+	"database/sql"
 	"github.com/pkg/errors"
 	"github.com/willschroeder/fingerprint/pkg/db"
 	"github.com/willschroeder/fingerprint/pkg/proto"
@@ -11,15 +12,15 @@ import (
 import "context"
 
 type GRPCServer struct {
-	dao *db.DAO
+	db *sql.DB
 }
 
-func NewGRPCServer(dao *db.DAO) *GRPCServer {
-	return &GRPCServer{dao: dao}
+func NewGRPCServer(db *sql.DB) *GRPCServer {
+	return &GRPCServer{db: db}
 }
 
 func (s *GRPCServer) CreateUser(_ context.Context, request *proto.CreateUserRequest) (*proto.CreateUserResponse, error) {
-	usersService := services.NewUserService(s.dao)
+	usersService := services.NewUserService(s.db)
 
 	user, session, err := usersService.CreateUser(request)
 	if err != nil {
@@ -35,7 +36,7 @@ func (s *GRPCServer) CreateUser(_ context.Context, request *proto.CreateUserRequ
 }
 
 func (s *GRPCServer) CreateGuestUser(_ context.Context, request *proto.CreateGuestUserRequest) (*proto.CreateGuestUserResponse, error) {
-	usersService := services.NewUserService(s.dao)
+	usersService := services.NewUserService(s.db)
 
 	user, session, err := usersService.CreateGuestUser(request)
 	if err != nil {
@@ -51,7 +52,7 @@ func (s *GRPCServer) CreateGuestUser(_ context.Context, request *proto.CreateGue
 }
 
 func (s *GRPCServer) GetUser(_ context.Context, request *proto.GetUserRequest) (*proto.GetUserResponse, error) {
-	repo := db.NewRepo(s.dao.DB)
+	repo := db.NewRepo(s.db)
 
 	switch ident := request.Identifier.(type) {
 	case *proto.GetUserRequest_Email:
@@ -72,7 +73,7 @@ func (s *GRPCServer) GetUser(_ context.Context, request *proto.GetUserRequest) (
 }
 
 func (s *GRPCServer) CreatePasswordResetToken(_ context.Context, request *proto.CreatePasswordResetTokenRequest) (*proto.CreatePasswordResetTokenResponse, error) {
-	usersService := services.NewUserService(s.dao)
+	usersService := services.NewUserService(s.db)
 	exp, err := util.ConvertTimestampToTime(request.Expiration)
 	if err != nil {
 		return nil, logAndUnwrapError(err)
@@ -87,7 +88,7 @@ func (s *GRPCServer) CreatePasswordResetToken(_ context.Context, request *proto.
 }
 
 func (s *GRPCServer) UpdateUserPassword(_ context.Context, request *proto.UpdateUserPasswordRequest) (*proto.UpdateUserPasswordResponse, error) {
-	usersService := services.NewUserService(s.dao)
+	usersService := services.NewUserService(s.db)
 	err := usersService.UpdateUserPassword(request.Email, request.PasswordResetToken, request.Password, request.PasswordConfirmation)
 	if err != nil {
 		return nil, logAndUnwrapError(err)
@@ -98,13 +99,13 @@ func (s *GRPCServer) UpdateUserPassword(_ context.Context, request *proto.Update
 }
 
 func (s *GRPCServer) CreateSession(_ context.Context, request *proto.CreateSessionRequest) (*proto.CreateSessionResponse, error) {
-	usersService := services.NewUserService(s.dao)
+	usersService := services.NewUserService(s.db)
 	user, err := usersService.ValidateEmailAndPassword(request.Email, request.Password)
 	if err != nil {
 		return nil, logAndUnwrapError(err)
 	}
 
-	sessionService := services.NewSessionService(db.NewRepo(s.dao.DB))
+	sessionService := services.NewSessionService(db.NewRepo(s.db))
 	session, err := sessionService.CreateSession(user.Uuid, request.ScopeGroupings)
 	if err != nil {
 		return nil, logAndUnwrapError(err)
@@ -120,7 +121,7 @@ func (s *GRPCServer) CreateSession(_ context.Context, request *proto.CreateSessi
 }
 
 func (s *GRPCServer) GetSession(_ context.Context, request *proto.GetSessionRequest) (*proto.GetSessionResponse, error) {
-	repo := db.NewRepo(s.dao.DB)
+	repo := db.NewRepo(s.db)
 	session, err := repo.GetSessionWithToken(request.Token)
 	if err != nil {
 		return nil, logAndUnwrapError(err)
@@ -135,7 +136,7 @@ func (s *GRPCServer) GetSession(_ context.Context, request *proto.GetSessionRequ
 }
 
 func (s *GRPCServer) DeleteSession(_ context.Context, request *proto.DeleteSessionRequest) (*proto.DeleteSessionResponse, error) {
-	repo := db.NewRepo(s.dao.DB)
+	repo := db.NewRepo(s.db)
 
 	switch representation := request.Representation.(type) {
 	case *proto.DeleteSessionRequest_Uuid:
@@ -156,7 +157,7 @@ func (s *GRPCServer) DeleteSession(_ context.Context, request *proto.DeleteSessi
 }
 
 func (s *GRPCServer) DeleteUser(_ context.Context, request *proto.DeleteUserRequest) (*proto.DeleteUserResponse, error) {
-	usersService := services.NewUserService(s.dao)
+	usersService := services.NewUserService(s.db)
 	err := usersService.DeleteUser(request.Email, request.Password)
 	if err != nil {
 		return nil, logAndUnwrapError(err)

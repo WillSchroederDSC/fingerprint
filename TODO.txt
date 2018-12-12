@@ -1,4 +1,3 @@
-Remove DB connection out of DAO object??
 Make all queries respect expiration dates
 Make sure that certain commands cant be executed on guest users
 Respect GRPC enums, and handle not found cases in repo instead of returning SQL errors

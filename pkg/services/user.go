@@ -1,6 +1,7 @@
 package services
 
 import (
+	"database/sql"
 	"github.com/pkg/errors"
 	"github.com/willschroeder/fingerprint/pkg/db"
 	"github.com/willschroeder/fingerprint/pkg/models"
@@ -11,15 +12,15 @@ import (
 )
 
 type UserService struct {
-	dao *db.DAO
+	db *sql.DB
 }
 
-func NewUserService(dao *db.DAO) *UserService {
-	return &UserService{dao: dao}
+func NewUserService(db *sql.DB) *UserService {
+	return &UserService{db: db}
 }
 
 func (us *UserService) ValidateEmailAndPassword(email string, password string) (*models.User, error) {
-	repo := db.NewRepo(us.dao.DB)
+	repo := db.NewRepo(us.db)
 	user, err := repo.GetUserWithEmail(email)
 	if err != nil {
 		return nil, err
@@ -39,7 +40,7 @@ func (us *UserService) CreateUser(request *proto.CreateUserRequest) (*models.Use
 		return nil, nil, err
 	}
 
-	tx, err := us.dao.NewTransaction()
+	tx, err := db.NewTransaction(us.db)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -74,7 +75,7 @@ func (us *UserService) CreateGuestUser(request *proto.CreateGuestUserRequest) (*
 
 	email := request.Email + "." + util.String(6) + ".guest"
 
-	tx, err := us.dao.NewTransaction()
+	tx, err := db.NewTransaction(us.db)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -102,7 +103,7 @@ func (us *UserService) CreateGuestUser(request *proto.CreateGuestUserRequest) (*
 }
 
 func (us *UserService) UpdateUserPassword(email string, passwordResetToken string, password string, passwordConfirmation string) error {
-	repo := db.NewRepo(us.dao.DB)
+	repo := db.NewRepo(us.db)
 
 	prt, err := repo.GetPasswordResetToken(passwordResetToken)
 	if err != nil {
@@ -132,7 +133,7 @@ func (us *UserService) UpdateUserPassword(email string, passwordResetToken strin
 }
 
 func (us *UserService) CreatePasswordResetToken(email string, expiration time.Time) (*models.PasswordReset, error) {
-	repo := db.NewRepo(us.dao.DB)
+	repo := db.NewRepo(us.db)
 
 	user, err := repo.GetUserWithEmail(email)
 	if err != nil {
@@ -153,7 +154,7 @@ func (us *UserService) CreatePasswordResetToken(email string, expiration time.Ti
 }
 
 func (us *UserService) DeleteUser(email string, password string) error {
-	repo := db.NewRepo(us.dao.DB)
+	repo := db.NewRepo(us.db)
 
 	user, err := repo.GetUserWithEmail(email)
 	if err != nil {

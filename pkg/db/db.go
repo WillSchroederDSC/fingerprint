@@ -16,12 +16,9 @@ const (
 	dbname   = "fingerprint_development"
 )
 
-type DAO struct {
-	DB *sql.DB
-}
 
-func (dao *DAO) NewTransaction() (*sql.Tx, error) {
-	tx, err := dao.DB.Begin()
+func NewTransaction(DB *sql.DB) (*sql.Tx, error) {
+	tx, err := DB.Begin()
 	if err != nil {
 		return nil, errors.Wrap(err, "couldn't build transaction")
 	}
@@ -29,7 +26,7 @@ func (dao *DAO) NewTransaction() (*sql.Tx, error) {
 	return tx, nil
 }
 
-func ConnectToDatabase() *DAO {
+func ConnectToDatabase() *sql.DB {
 	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+
 		"password=%s dbname=%s sslmode=disable",
 		host, port, user, password, dbname)
@@ -44,7 +41,7 @@ func ConnectToDatabase() *DAO {
 	if err != nil {
 		log.Fatal(err)
 	}
-	return &DAO{DB: conn}
+	return conn
 }
 
 func MigrateUp() {
@@ -53,6 +50,13 @@ func MigrateUp() {
 
 func MigrateDown() {
 
+}
+
+func HandleClose(db *sql.DB) {
+	err := db.Close()
+	if err != nil {
+		log.Println("Failed to close db connection\n", err)
+	}
 }
 
 func HandleRollback(tx *sql.Tx) {

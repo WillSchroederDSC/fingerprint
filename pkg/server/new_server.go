@@ -14,9 +14,9 @@ const (
 )
 
 func NewServer() {
-	dao := db.ConnectToDatabase()
-	defer dao.DB.Close()
-	server := NewGRPCServer(dao)
+	conn := db.ConnectToDatabase()
+	defer db.HandleClose(conn)
+	server := NewGRPCServer(conn)
 
 	// GRPC Setup, taken from google's Hello World example
 	lis, err := net.Listen("tcp", port)

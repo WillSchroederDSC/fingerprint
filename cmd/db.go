@@ -44,10 +44,10 @@ var migrateCmd = &cobra.Command{
 			Dir: absPath,
 		}
 
-		db := db.ConnectToDatabase()
-		defer db.DB.Close()
+		conn := db.ConnectToDatabase()
+		db.HandleClose(conn)
 
-		n, err := migrate.Exec(db.DB, "postgres", migrations, migrate.Up)
+		n, err := migrate.Exec(conn, "postgres", migrations, migrate.Up)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -65,10 +65,10 @@ var rollbackCmd = &cobra.Command{
 			Dir: absPath,
 		}
 
-		db := db.ConnectToDatabase()
-		defer db.DB.Close()
+		conn := db.ConnectToDatabase()
+		db.HandleClose(conn)
 
-		n, err := migrate.Exec(db.DB, "postgres", migrations, migrate.Down)
+		n, err := migrate.Exec(conn, "postgres", migrations, migrate.Down)
 		if err != nil {
 			log.Fatal(err)
 		}
