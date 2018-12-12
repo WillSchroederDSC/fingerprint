@@ -3,8 +3,7 @@ Make sure that certain commands cant be executed on guest users
 Respect GRPC enums, and handle not found cases in repo instead of returning SQL errors
 Switch timestamp conversions to use Util
 Build cleaner
-Move cobra things like migrate to db
-Allow configuration for commands, fill out cobra text, allow secret to be set
+Allow configuration for postgres and posto secret values
 Create DB bash script, any other setup
 Update README, reminder to store token in cookie, not in local storage, otherwise venerable to session hijack
 Write a ton of tests

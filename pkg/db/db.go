@@ -5,7 +5,9 @@ import (
 	"fmt"
 	_ "github.com/lib/pq"
 	"github.com/pkg/errors"
+	"github.com/rubenv/sql-migrate"
 	"log"
+	"path/filepath"
 )
 
 const (
@@ -45,11 +47,37 @@ func ConnectToDatabase() *sql.DB {
 }
 
 func MigrateUp() {
+	absPath, _ := filepath.Abs("./migrations")
 
+	migrations := &migrate.FileMigrationSource{
+		Dir: absPath,
+	}
+
+	conn := ConnectToDatabase()
+	HandleClose(conn)
+
+	n, err := migrate.Exec(conn, "postgres", migrations, migrate.Up)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Printf("Applied %d migrations\n", n)
 }
 
 func MigrateDown() {
+	absPath, _ := filepath.Abs("./migrations")
 
+	migrations := &migrate.FileMigrationSource{
+		Dir: absPath,
+	}
+
+	conn := ConnectToDatabase()
+	HandleClose(conn)
+
+	n, err := migrate.Exec(conn, "postgres", migrations, migrate.Down)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Printf("Rolled back %d migrations\n", n)
 }
 
 func HandleClose(db *sql.DB) {
