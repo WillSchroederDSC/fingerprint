@@ -22,8 +22,8 @@ func (u *User) ConvertToProtobuff() *proto.User {
 }
 
 type Session struct {
-	Uuid   string
-	Token  string
+	Uuid     string
+	Token    string
 	UserUuid string
 }
 

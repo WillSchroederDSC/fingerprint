@@ -286,7 +286,6 @@ func TestGRPCServer_UpdateUserPassword(t *testing.T) {
 func TestGRPCServer_CreateSession(t *testing.T) {
 	testUser := buildTestUser("test")
 
-
 	type fields struct {
 		dao *db.DAO
 	}
@@ -301,10 +300,9 @@ func TestGRPCServer_CreateSession(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "creates a session",
-			fields: fields{testDAO},
-			args: args{in0: context.Background(), request: &proto.CreateSessionRequest{Email:testUser.User.Email, Password:"test", ScopeGroupings:twoScopeGroupings()},
-			},
+			name:    "creates a session",
+			fields:  fields{testDAO},
+			args:    args{in0: context.Background(), request: &proto.CreateSessionRequest{Email: testUser.User.Email, Password: "test", ScopeGroupings: twoScopeGroupings()}},
 			wantErr: false,
 		},
 	}
@@ -341,10 +339,9 @@ func TestGRPCServer_GetSession(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "gets a session",
-			fields: fields{testDAO},
-			args: args{in0: context.Background(), request: &proto.GetSessionRequest{Token:testUser.Session.Token},
-			},
+			name:    "gets a session",
+			fields:  fields{testDAO},
+			args:    args{in0: context.Background(), request: &proto.GetSessionRequest{Token: testUser.Session.Token}},
 			wantErr: false,
 		},
 	}
@@ -381,17 +378,15 @@ func TestGRPCServer_DeleteSession(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "deletes a session using a uuid",
-			fields: fields{testDAO},
-			args: args{in0: context.Background(), request: &proto.DeleteSessionRequest{Representation: &proto.DeleteSessionRequest_Uuid{Uuid:testUser.Session.Uuid}},
-			},
+			name:    "deletes a session using a uuid",
+			fields:  fields{testDAO},
+			args:    args{in0: context.Background(), request: &proto.DeleteSessionRequest{Representation: &proto.DeleteSessionRequest_Uuid{Uuid: testUser.Session.Uuid}}},
 			wantErr: false,
 		},
 		{
-			name: "deletes a session using a token",
-			fields: fields{testDAO},
-			args: args{in0: context.Background(), request: &proto.DeleteSessionRequest{Representation: &proto.DeleteSessionRequest_Token{Token:testUser.Session.Token}},
-			},
+			name:    "deletes a session using a token",
+			fields:  fields{testDAO},
+			args:    args{in0: context.Background(), request: &proto.DeleteSessionRequest{Representation: &proto.DeleteSessionRequest_Token{Token: testUser.Session.Token}}},
 			wantErr: false,
 		},
 	}
@@ -427,9 +422,9 @@ func TestGRPCServer_DeleteUser(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "deletes a user",
-			fields: fields{testDAO},
-			args: args{in0: context.Background(), request: &proto.DeleteUserRequest{Email:testUser.User.Email, Password:"test"},},
+			name:    "deletes a user",
+			fields:  fields{testDAO},
+			args:    args{in0: context.Background(), request: &proto.DeleteUserRequest{Email: testUser.User.Email, Password: "test"}},
 			wantErr: false,
 		},
 	}
