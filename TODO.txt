@@ -7,7 +7,7 @@ Build cleaner
 Allow configuration for postgres and posto secret values
 Create DB bash script, any other setup
 Update README, reminder to store token in cookie, not in local storage, otherwise venerable to session hijack
-Write a ton of tests
+Log relevant actions
 Redis session caching
 Resolve any last todos in code
 Docker build for go, google search it, or some kind of jetbrains auto build? Circle CI
