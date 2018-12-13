@@ -1,6 +1,7 @@
 Make all queries respect expiration dates
 Make sure that certain commands cant be executed on guest users
 Respect GRPC enums, and handle not found cases in repo instead of returning SQL errors
+Return GRPC status codes
 Switch timestamp conversions to use Util
 Build cleaner
 Allow configuration for postgres and posto secret values
